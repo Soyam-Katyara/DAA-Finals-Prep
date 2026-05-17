@@ -795,8 +795,8 @@ function setTech(t) {
   document.querySelectorAll('.tech-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tech-' + t).classList.add('active');
   const box = document.getElementById('oa-fn-box');
-  if (t === 'lp') box.innerHTML = `<span>h(key, i)</span> = (key mod 9 + i) mod 9`;
-  else if (t === 'qp') box.innerHTML = `<span>h(key, i)</span> = (key mod 9 + i²) mod 9`;
+  if (t === 'lp') box.innerHTML = `<span>h(key, i)</span> = (key +i) mod 9`;
+  else if (t === 'qp') box.innerHTML = `<span>h(key, i)</span> = (key + i²) mod 9`;
   else box.innerHTML = `<span>h1(key)</span> = key mod 9<br><span>h2(key)</span> = 7 − (key mod 7)<br><span>h(key, i)</span> = (h1 + i·h2) mod 9`;
   oaReset();
 }
