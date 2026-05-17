@@ -456,6 +456,127 @@ function rotL(x) {
   upH(x); upH(y); return y;
 }
 
+function cloneAVL(root) {
+  if (!root) return null;
+  const n = new AVLNode(root.val);
+  n.h = root.h;
+  n.left = cloneAVL(root.left);
+  n.right = cloneAVL(root.right);
+  return n;
+}
+
+function bstInsertAVL(root, val) {
+  if (!root) return { root: new AVLNode(val), inserted: true };
+  if (val < root.val) {
+    const r = bstInsertAVL(root.left, val);
+    root.left = r.root;
+    upH(root);
+    return { root, inserted: r.inserted };
+  }
+  if (val > root.val) {
+    const r = bstInsertAVL(root.right, val);
+    root.right = r.root;
+    upH(root);
+    return { root, inserted: r.inserted };
+  }
+  return { root, inserted: false };
+}
+
+function findAVLViolation(root) {
+  let found = null;
+  function dfs(n) {
+    if (!n || found) return;
+    dfs(n.left);
+    dfs(n.right);
+    upH(n);
+    if (!found && Math.abs(bf(n)) > 1) found = n;
+  }
+  dfs(root);
+  return found;
+}
+
+function rotationTypeForInsert(z, val) {
+  const b = bf(z);
+  if (b > 1 && val < z.left.val) return 'LL';
+  if (b > 1 && val > z.left.val) return 'LR';
+  if (b < -1 && val > z.right.val) return 'RR';
+  if (b < -1 && val < z.right.val) return 'RL';
+  return null;
+}
+
+function applyAVLRotationAt(root, pivotVal, rotType, stage) {
+  if (!root) return null;
+  if (root.val === pivotVal) {
+    if (rotType === 'LL') return rotR(root);
+    if (rotType === 'RR') return rotL(root);
+    if (rotType === 'LR') {
+      if (stage === 'first') { root.left = rotL(root.left); upH(root); return root; }
+      return rotR(root);
+    }
+    if (rotType === 'RL') {
+      if (stage === 'first') { root.right = rotR(root.right); upH(root); return root; }
+      return rotL(root);
+    }
+  }
+  root.left = applyAVLRotationAt(root.left, pivotVal, rotType, stage);
+  root.right = applyAVLRotationAt(root.right, pivotVal, rotType, stage);
+  upH(root);
+  return root;
+}
+
+function buildAVLInsertFrames(root, val) {
+  let work = cloneAVL(root);
+  const frames = [];
+  const inserted = bstInsertAVL(work, val);
+  work = inserted.root;
+  frames.push({ msg: `Normal BST add: ${val}`, snap: snapshotTree(work), highlight: new Set([val]) });
+
+  if (!inserted.inserted) {
+    frames.push({ msg: `${val} already exists. Tree unchanged.`, snap: snapshotTree(work), highlight: new Set([val]) });
+    return { root: work, rotType: null, frames };
+  }
+
+  const viol = findAVLViolation(work);
+  if (!viol) {
+    frames.push({ msg: 'Balance factors are valid. No rotation needed.', snap: snapshotTree(work), highlight: new Set([val]) });
+    return { root: work, rotType: null, frames };
+  }
+
+  const rotType = rotationTypeForInsert(viol, val);
+  frames.push({
+    msg: `Property violated at ${viol.val}: BF = ${bf(viol)}. ${rotType} case detected.`,
+    snap: snapshotTree(work),
+    highlight: new Set([viol.val, val])
+  });
+
+  if (rotType === 'LR') {
+    const childVal = viol.left ? viol.left.val : '';
+    work = applyAVLRotationAt(work, viol.val, rotType, 'first');
+    frames.push({
+      msg: `LR step 1: left rotate child ${childVal} to convert LR into LL.`,
+      snap: snapshotTree(work),
+      highlight: new Set([viol.val, val])
+    });
+  } else if (rotType === 'RL') {
+    const childVal = viol.right ? viol.right.val : '';
+    work = applyAVLRotationAt(work, viol.val, rotType, 'first');
+    frames.push({
+      msg: `RL step 1: right rotate child ${childVal} to convert RL into RR.`,
+      snap: snapshotTree(work),
+      highlight: new Set([viol.val, val])
+    });
+  }
+
+  work = applyAVLRotationAt(work, viol.val, rotType, 'final');
+  const finalLabel = rotType === 'LL' ? 'right rotation'
+    : rotType === 'RR' ? 'left rotation'
+    : rotType === 'LR' ? 'right rotation on the unbalanced node'
+    : 'left rotation on the unbalanced node';
+  frames.push({ msg: `${rotType} fix: perform ${finalLabel}.`, snap: snapshotTree(work), highlight: new Set([val]) });
+  frames.push({ msg: `Final AVL tree after inserting ${val}.`, snap: snapshotTree(work), highlight: null });
+  return { root: work, rotType, frames };
+}
+
 function insertAVL(root, val) {
   if (!root) return { node: new AVLNode(val), rotType: null };
   let rotType = null;
@@ -933,28 +1054,35 @@ function insNext() {
   document.getElementById('ins-next-btn').disabled = true;
 
   const val = INS_SEQUENCE[insStep];
-  // snapshot BEFORE mutation
   const oldSnap = insCurrentSnap;
-  const { node: newTree, rotType } = insertAVL(insTree, val);
-  insTree = newTree;
+  const { root: newTree, rotType, frames } = buildAVLInsertFrames(insTree, val);
   INS_STEP_LABELS[insStep].rot = rotType || '';
-  // snapshot AFTER mutation
-  const newSnap = snapshotTree(insTree);
-
   const svgEl = document.getElementById('tree-canvas-ins');
-  let msg = `Inserted ${val}`;
-  if (rotType) msg += ` → ${rotType} Rotation`;
+  let current = oldSnap;
+  let i = 0;
 
-  morphTree(svgEl, oldSnap, newSnap, 650, rotType ? new Set([val]) : null, () => {
-    insCurrentSnap = newSnap;
-    insStep++;
-    buildInsStepList();
-    showStatus('ins-status', msg);
-    insAnimating = false;
-    document.getElementById('ins-prev-btn').disabled = insStep === 0;
-    if (insStep < INS_SEQUENCE.length)
-      document.getElementById('ins-next-btn').disabled = false;
-  });
+  function playNextFrame() {
+    const frame = frames[i];
+    morphTree(svgEl, current, frame.snap, 650, frame.highlight, () => {
+      current = frame.snap;
+      showStatus('ins-status', frame.msg);
+      i++;
+      if (i < frames.length) {
+        setTimeout(playNextFrame, 320);
+        return;
+      }
+      insTree = newTree;
+      insCurrentSnap = current;
+      insStep++;
+      buildInsStepList();
+      insAnimating = false;
+      document.getElementById('ins-prev-btn').disabled = insStep === 0;
+      if (insStep < INS_SEQUENCE.length)
+        document.getElementById('ins-next-btn').disabled = false;
+    });
+  }
+
+  playNextFrame();
 }
 
 function insPrev() {
