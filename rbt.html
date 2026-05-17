@@ -209,7 +209,7 @@
   <!-- INTRO -->
   <div id="intro-page" class="page active">
     <h1>Red-Black Tree</h1>
-    <p class="desc">A Red-Black Tree is a self-balancing BST. Each node has an additional attribute: a color, which can be either red or black. These colors are used to maintain balance during insertions and deletions, ensuring efficient data retrieval and manipulation.</p>
+    <p class="desc">This visualizer uses a hybrid self-balancing BST: it keeps Red-Black color rules and also applies AVL-style height balance so every node's balance factor stays between -1 and 1.</p>
     <div class="props">
       <div class="prop"><span class="prop-num">P1</span><span class="prop-text"><b>Node Color:</b> Each node is either red or black.</span></div>
       <div class="prop"><span class="prop-num">P2</span><span class="prop-text"><b>Root Property:</b> The root of the tree is always black.</span></div>
@@ -240,26 +240,15 @@
         <div class="tree-overlay" id="ins-overlay"></div>
       </div>
       <div class="info-section">
-        <strong>Red-Black Tree Insertion</strong>
-         <p>
-          <strong>Let x be the newly inserted node.</strong>
-          Perform standard BST insertion and make the colour of newly inserted nodes as RED. <br>
-          If x is the root, change the colour of x as BLACK (Black height of complete tree increases by 1). <br>
-          Do the following if the color of x's parent is not BLACK and x is not the root. <br>
-          <strong>a) If x's uncle is RED</strong> (Grandparent must have been black from property 4) <br>
-          ----(i) Change the colour of parent and uncle as BLACK. <br>
-          ----(ii) Colour of a grandparent as RED. <br>
-          ----(iii) Change x = x's grandparent, repeat steps 2 and 3 for new x. <br>
-          <strong>b) If x's uncle is BLACK</strong> then there can be four configurations for x, x's parent (p) and x's grandparent (g) (This is similar to AVL Tree) <br>
-          ----(i) Left Left Case (p is left child of g and x is left child of p) <br>
-          ----(ii) Left Right Case (p is left child of g and x is the right child of p) <br>
-          ----(iii) Right Right Case (Mirror of case i) <br>
-          ----(iv) Right Left Case (Mirror of case ii) <br>
-          <br>
-          <strong>Re-coloring after rotations:</strong><br>
-          For Left Left Case [3.b (i)] and Right Right case [3.b (iii)], swap colors of grandparent and parent after rotations<br>
-          For Left Right Case [3.b (ii)]and Right Left Case [3.b (iv)], swap colors of grandparent and inserted node after rotations
-        <p>
+        <strong>Hybrid Red-Black + AVL Insertion</strong>
+        <ol>
+          <li><strong>Initial Insertion:</strong> Add your new node (x) just like you would in a standard Binary Search Tree and color it RED.</li>
+          <li><strong>The Root Rule:</strong> If x is the very first node in the tree (the root), simply change its color to BLACK and you are done.</li>
+          <li><strong>Check for Red-Red Violations:</strong> If x's parent is also RED, the rules are broken. You must fix the tree by looking at the color of x's "uncle" (the parent's sibling).</li>
+          <li><strong>The Fix: If the Uncle is RED:</strong> Change both the parent and the uncle to BLACK, and change the grandparent to RED. Because the grandparent might now cause a new violation higher up, treat the grandparent as your new x and repeat the rules from step 2.</li>
+          <li><strong>The Fix: If the Uncle is BLACK (or missing):</strong> Rotate and recolor according to the LL, LR, RR, or RL shape to restore Red-Black properties.</li>
+          <li><strong>AVL Balance Pass:</strong> After Red-Black insertion is valid, check each node's balance factor. If any node is outside -1 to 1, apply the matching AVL rotation and recolor again so the Red-Black rules remain valid.</li>
+        </ol>
       </div>
     </div>
   </div>
@@ -285,7 +274,7 @@
         <div class="tree-overlay" id="del-overlay"></div>
       </div>
       <div class="info-section">
-        <strong>Red-Black Tree Deletion</strong>
+        <strong>Hybrid Red-Black + AVL Deletion</strong>
         <ol>
           <li><strong>Case 1: Node to delete is RED.</strong> Remove it directly because no black-height rule is broken.</li>
           <li><strong>Case 2: Node to delete is BLACK with a RED child.</strong> Replace it with the child and recolor that child BLACK.</li>
@@ -294,6 +283,7 @@
           <li><strong>Case 3b: Sibling is BLACK with two BLACK children.</strong> Recolor sibling RED and move the double black upward.</li>
           <li><strong>Case 3c: Sibling is BLACK, far child BLACK, near child RED.</strong> Recolor and rotate around the sibling to transform into Case 3d.</li>
           <li><strong>Case 3d: Sibling is BLACK with far child RED.</strong> Recolor sibling/parent/far child, rotate around the parent, and finish the fix.</li>
+          <li><strong>AVL Balance Pass:</strong> After the Red-Black delete fix, rebalance any node whose balance factor is outside -1 to 1, then recolor to keep Red-Black properties valid.</li>
         </ol>
       </div>
     </div>
@@ -325,16 +315,34 @@ class RBTree {
 
   insert(val) {
     const z = new RBNode(val);
-    if (!this.root) { this.root = z; z.color = 'BLACK'; return [{ type:'insert', node:val }, { type:'color', node:val, color:'BLACK', reason:'Root must be black' }]; }
-    let steps = [{ type:'insert', node:val }];
+    let steps = [];
+    if (!this.root) {
+      this.root = z;
+      steps.push(this._step({ type:'insert', node:val, highlight:[val], reason:`Normal BST insert ${val} as RED root` }));
+      z.color = 'BLACK';
+      steps.push(this._step({ type:'color', node:val, color:'BLACK', highlight:[val], reason:'Root must be black' }));
+      steps.push(this._step({ type:'final', node:val, highlight:[], reason:`Final hybrid tree after inserting ${val}.` }));
+      return steps;
+    }
     // BST insert
     let y = null, x = this.root;
-    while (x) { y = x; x = val < x.val ? x.left : x.right; }
+    while (x) {
+      y = x;
+      if (val === x.val) return [this._step({ type:'case', node:val, highlight:[val], reason:`${val} already exists. Tree unchanged.` })];
+      x = val < x.val ? x.left : x.right;
+    }
     z.parent = y;
     if (val < y.val) y.left = z; else y.right = z;
-    // fixup
+    steps.push(this._step({ type:'insert', node:val, highlight:[val], reason:`Normal BST insert ${val} as RED node` }));
+    // Red-black fixup, then the page's hybrid AVL balance pass.
     steps = steps.concat(this._fixInsert(z));
+    steps = steps.concat(this._fixAvlBalance(val));
+    steps.push(this._step({ type:'final', node:val, highlight:[], reason:`Final hybrid tree after inserting ${val}.` }));
     return steps;
+  }
+
+  _step(step) {
+    return { ...step, snapshot: this.snapshot() };
   }
 
   _fixInsert(z) {
@@ -342,47 +350,73 @@ class RBTree {
     while (z.parent && z.parent.color === 'RED') {
       const p = z.parent, g = p.parent;
       if (!g) break;
+      steps.push(this._step({
+        type:'violation',
+        nodes:[z.val, p.val],
+        highlight:[z.val, p.val, g.val],
+        reason:`Red-red property violated: node ${z.val} and parent ${p.val} are both RED. Grandparent is ${g.val}.`
+      }));
       if (p === g.left) {
         const u = g.right;
         if (u && u.color === 'RED') {
           // Case 1: uncle red
           p.color = 'BLACK'; u.color = 'BLACK'; g.color = 'RED';
-          steps.push({ type:'recolor', nodes:[p.val, u.val, g.val], colors:['BLACK','BLACK','RED'], reason:`Uncle red: recolor parent(${p.val})→BLACK, uncle(${u.val})→BLACK, gp(${g.val})→RED` });
+          steps.push(this._step({ type:'recolor', nodes:[p.val, u.val, g.val], colors:['BLACK','BLACK','RED'], highlight:[p.val, u.val, g.val], reason:`Color step: uncle is RED, so parent ${p.val} and uncle ${u.val} become BLACK, grandparent ${g.val} becomes RED.` }));
           z = g;
         } else {
-          if (z === p.right) {
-            // Case 2: LR → rotate left on parent → becomes LL
-            steps.push({ type:'rotate', dir:'left', pivot:p.val, reason:`LR case: rotate left on ${p.val}` });
+          if (z === p.left) {
+            // Left Left: rotate at grandparent, then swap parent/grandparent colors.
+            this._rotateRight(g);
+            steps.push(this._step({ type:'rotate', dir:'right', pivot:g.val, highlight:[p.val, g.val], reason:`LL case: rotate right on grandparent ${g.val}.` }));
+            const oldPColor = p.color;
+            p.color = g.color; g.color = oldPColor;
+            steps.push(this._step({ type:'recolor', nodes:[p.val, g.val], colors:[p.color, g.color], highlight:[p.val, g.val], reason:`Color step: LL case, swap colors of parent ${p.val} and grandparent ${g.val}.` }));
+          } else {
+            // Left Right: rotate parent, rotate grandparent, then swap inserted/grandparent colors.
+            const x = z;
             this._rotateLeft(p); z = p; // z is now the old parent
+            steps.push(this._step({ type:'rotate', dir:'left', pivot:p.val, highlight:[x.val, p.val, g.val], reason:`LR case: rotate left on parent ${p.val}.` }));
+            this._rotateRight(g);
+            steps.push(this._step({ type:'rotate', dir:'right', pivot:g.val, highlight:[x.val, g.val], reason:`LR case: rotate right on grandparent ${g.val}.` }));
+            const oldXColor = x.color;
+            x.color = g.color; g.color = oldXColor;
+            steps.push(this._step({ type:'recolor', nodes:[x.val, g.val], colors:[x.color, g.color], highlight:[x.val, g.val], reason:`Color step: LR case, swap colors of inserted node ${x.val} and grandparent ${g.val}.` }));
           }
-          // Case 3: LL
-          const pp = z.parent, gg = pp.parent;
-          const oldPColor = pp.color, oldGColor = gg.color;
-          pp.color = 'BLACK'; gg.color = 'RED';
-          steps.push({ type:'recolor', nodes:[pp.val, gg.val], colors:['BLACK','RED'], reason:`LL case: swap colors gp(${gg.val})→RED, p(${pp.val})→BLACK` });
-          steps.push({ type:'rotate', dir:'right', pivot:gg.val, reason:`LL case: rotate right on ${gg.val}` });
-          this._rotateRight(gg);
+          break;
         }
       } else {
         const u = g.left;
         if (u && u.color === 'RED') {
           p.color = 'BLACK'; u.color = 'BLACK'; g.color = 'RED';
-          steps.push({ type:'recolor', nodes:[p.val, u.val, g.val], colors:['BLACK','BLACK','RED'], reason:`Uncle red: recolor parent(${p.val})→BLACK, uncle(${u.val})→BLACK, gp(${g.val})→RED` });
+          steps.push(this._step({ type:'recolor', nodes:[p.val, u.val, g.val], colors:['BLACK','BLACK','RED'], highlight:[p.val, u.val, g.val], reason:`Color step: uncle is RED, so parent ${p.val} and uncle ${u.val} become BLACK, grandparent ${g.val} becomes RED.` }));
           z = g;
         } else {
-          if (z === p.left) {
-            steps.push({ type:'rotate', dir:'right', pivot:p.val, reason:`RL case: rotate right on ${p.val}` });
+          if (z === p.right) {
+            // Right Right: rotate at grandparent, then swap parent/grandparent colors.
+            this._rotateLeft(g);
+            steps.push(this._step({ type:'rotate', dir:'left', pivot:g.val, highlight:[p.val, g.val], reason:`RR case: rotate left on grandparent ${g.val}.` }));
+            const oldPColor = p.color;
+            p.color = g.color; g.color = oldPColor;
+            steps.push(this._step({ type:'recolor', nodes:[p.val, g.val], colors:[p.color, g.color], highlight:[p.val, g.val], reason:`Color step: RR case, swap colors of parent ${p.val} and grandparent ${g.val}.` }));
+          } else {
+            // Right Left: rotate parent, rotate grandparent, then swap inserted/grandparent colors.
+            const x = z;
             this._rotateRight(p); z = p;
+            steps.push(this._step({ type:'rotate', dir:'right', pivot:p.val, highlight:[x.val, p.val, g.val], reason:`RL case: rotate right on parent ${p.val}.` }));
+            this._rotateLeft(g);
+            steps.push(this._step({ type:'rotate', dir:'left', pivot:g.val, highlight:[x.val, g.val], reason:`RL case: rotate left on grandparent ${g.val}.` }));
+            const oldXColor = x.color;
+            x.color = g.color; g.color = oldXColor;
+            steps.push(this._step({ type:'recolor', nodes:[x.val, g.val], colors:[x.color, g.color], highlight:[x.val, g.val], reason:`Color step: RL case, swap colors of inserted node ${x.val} and grandparent ${g.val}.` }));
           }
-          const pp = z.parent, gg = pp.parent;
-          pp.color = 'BLACK'; gg.color = 'RED';
-          steps.push({ type:'recolor', nodes:[pp.val, gg.val], colors:['BLACK','RED'], reason:`RR case: swap colors gp(${gg.val})→RED, p(${pp.val})→BLACK` });
-          steps.push({ type:'rotate', dir:'left', pivot:gg.val, reason:`RR case: rotate left on ${gg.val}` });
-          this._rotateLeft(gg);
+          break;
         }
       }
     }
-    this.root.color = 'BLACK';
+    if (this.root && this.root.color !== 'BLACK') {
+      this.root.color = 'BLACK';
+      steps.push(this._step({ type:'color', node:this.root.val, color:'BLACK', highlight:[this.root.val], reason:`Final color step: root ${this.root.val} becomes BLACK.` }));
+    }
     return steps;
   }
 
@@ -406,11 +440,139 @@ class RBTree {
     y.right = x; x.parent = y;
   }
 
+  _height(n) {
+    if (!n) return 0;
+    return 1 + Math.max(this._height(n.left), this._height(n.right));
+  }
+
+  _balanceFactor(n) {
+    return n ? this._height(n.left) - this._height(n.right) : 0;
+  }
+
+  _findAvlViolation(n) {
+    if (!n) return null;
+    const left = this._findAvlViolation(n.left);
+    if (left) return left;
+    const right = this._findAvlViolation(n.right);
+    if (right) return right;
+    return Math.abs(this._balanceFactor(n)) > 1 ? n : null;
+  }
+
+  _fixAvlBalance(insertedVal) {
+    let steps = [];
+    let pivot = this._findAvlViolation(this.root);
+    let guard = 0;
+    while (pivot && guard < 20) {
+      guard++;
+      const bf = this._balanceFactor(pivot);
+      const childBf = bf > 1 ? this._balanceFactor(pivot.left) : this._balanceFactor(pivot.right);
+      const type = bf > 1
+        ? (childBf >= 0 ? 'LL' : 'LR')
+        : (childBf <= 0 ? 'RR' : 'RL');
+
+      steps.push(this._step({
+        type:'case',
+        node:pivot.val,
+        highlight:[pivot.val, insertedVal],
+        reason:`AVL balance rule violated at ${pivot.val}: BF = ${bf}. ${type} case detected.`
+      }));
+
+      if (type === 'LL') {
+        this._rotateRight(pivot);
+        steps.push(this._step({ type:'rotate', dir:'right', pivot:pivot.val, highlight:[pivot.val, insertedVal], reason:`AVL LL fix: rotate right on ${pivot.val}.` }));
+      } else if (type === 'RR') {
+        this._rotateLeft(pivot);
+        steps.push(this._step({ type:'rotate', dir:'left', pivot:pivot.val, highlight:[pivot.val, insertedVal], reason:`AVL RR fix: rotate left on ${pivot.val}.` }));
+      } else if (type === 'LR') {
+        const child = pivot.left;
+        this._rotateLeft(child);
+        steps.push(this._step({ type:'rotate', dir:'left', pivot:child.val, highlight:[child.val, pivot.val, insertedVal], reason:`AVL LR step 1: rotate left on child ${child.val}.` }));
+        this._rotateRight(pivot);
+        steps.push(this._step({ type:'rotate', dir:'right', pivot:pivot.val, highlight:[pivot.val, insertedVal], reason:`AVL LR step 2: rotate right on ${pivot.val}.` }));
+      } else {
+        const child = pivot.right;
+        this._rotateRight(child);
+        steps.push(this._step({ type:'rotate', dir:'right', pivot:child.val, highlight:[child.val, pivot.val, insertedVal], reason:`AVL RL step 1: rotate right on child ${child.val}.` }));
+        this._rotateLeft(pivot);
+        steps.push(this._step({ type:'rotate', dir:'left', pivot:pivot.val, highlight:[pivot.val, insertedVal], reason:`AVL RL step 2: rotate left on ${pivot.val}.` }));
+      }
+
+      const recolored = this._recolorAsRedBlack();
+      steps.push(this._step({
+        type:'recolor',
+        nodes:recolored,
+        highlight:recolored,
+        reason:'Recolor after AVL rotation so red-black properties stay valid.'
+      }));
+      pivot = this._findAvlViolation(this.root);
+    }
+    return steps;
+  }
+
+  _recolorAsRedBlack() {
+    const recolored = [];
+    const memo = new WeakMap();
+
+    const optionsFor = (n) => {
+      if (!n) {
+        return {
+          BLACK: new Map([[1, { leftColor:null, rightColor:null, leftBh:1, rightBh:1 }]]),
+          RED: new Map()
+        };
+      }
+
+      const left = optionsFor(n.left);
+      const right = optionsFor(n.right);
+      const options = { BLACK:new Map(), RED:new Map() };
+      const addOption = (color, bh, meta) => {
+        if (!options[color].has(bh)) options[color].set(bh, meta);
+      };
+
+      ['BLACK', 'RED'].forEach(leftColor => {
+        ['BLACK', 'RED'].forEach(rightColor => {
+          left[leftColor].forEach((leftMeta, leftBh) => {
+            right[rightColor].forEach((rightMeta, rightBh) => {
+              if (leftBh !== rightBh) return;
+              addOption('BLACK', leftBh + 1, { leftColor, rightColor, leftBh, rightBh });
+            });
+          });
+        });
+      });
+
+      left.BLACK.forEach((leftMeta, leftBh) => {
+        right.BLACK.forEach((rightMeta, rightBh) => {
+          if (leftBh !== rightBh) return;
+          addOption('RED', leftBh, { leftColor:'BLACK', rightColor:'BLACK', leftBh, rightBh });
+        });
+      });
+
+      memo.set(n, options);
+      return options;
+    };
+
+    const applyColor = (n, color, bh) => {
+      if (!n) return;
+      if (n.color !== color) recolored.push(n.val);
+      n.color = color;
+      const meta = memo.get(n)[color].get(bh);
+      applyColor(n.left, meta.leftColor, meta.leftBh);
+      applyColor(n.right, meta.rightColor, meta.rightBh);
+    };
+
+    if (this.root) {
+      const rootOptions = optionsFor(this.root).BLACK;
+      const rootBh = [...rootOptions.keys()].sort((a, b) => a - b)[0];
+      if (rootBh !== undefined) applyColor(this.root, 'BLACK', rootBh);
+    }
+    return [...new Set(recolored)];
+  }
+
   delete(val) {
     let steps = [{ type:'delete', node:val }];
     const z = this._find(this.root, val);
     if (!z) return steps;
     steps = steps.concat(this._delete(z));
+    steps = steps.concat(this._fixAvlBalance(val));
     return steps;
   }
 
@@ -559,6 +721,30 @@ function computePositions(root, cw, ch) {
   return pos;
 }
 
+function treeFromSnapshot(snapshot) {
+  if (!snapshot || !snapshot.length) return null;
+  const nodes = new Map(snapshot.map(n => [n.val, { val:n.val, color:n.color, left:null, right:null }]));
+  const childVals = new Set();
+  snapshot.forEach(n => {
+    const current = nodes.get(n.val);
+    if (n.leftVal !== null) { current.left = nodes.get(n.leftVal); childVals.add(n.leftVal); }
+    if (n.rightVal !== null) { current.right = nodes.get(n.rightVal); childVals.add(n.rightVal); }
+  });
+  const rootSnap = snapshot.find(n => !childVals.has(n.val));
+  return rootSnap ? nodes.get(rootSnap.val) : null;
+}
+
+function renderInsSnapshot(snapshot, highlightVals) {
+  const canvas = document.getElementById('ins-canvas');
+  const overlay = document.getElementById('ins-overlay');
+  const root = treeFromSnapshot(snapshot);
+  const cw = canvas.parentElement.clientWidth;
+  const ch = canvas.parentElement.clientHeight;
+  const pos = computePositions(root, cw, ch);
+  drawEdges(canvas, root, pos);
+  syncOverlay(overlay, pos, 20, highlightVals ? new Set(highlightVals) : null);
+}
+
 // ─── RENDER CANVAS (edges) ───────────────────────────────────────────────────
 function drawEdges(canvas, root, pos) {
   // Stamp real pixel dimensions onto canvas element
@@ -611,7 +797,11 @@ function syncOverlay(overlay, pos, R, highlightVal) {
     el.style.top = (p.y - R) + 'px';
     el.className = 'anim-node ' + (p.color === 'RED' ? 'red-col' : 'black-col');
     el.textContent = val;
-    el.style.outline = (String(val) === String(highlightVal)) ? '2px solid #fff' : 'none';
+    const isHighlighted = highlightVal instanceof Set
+      ? highlightVal.has(Number(val)) || highlightVal.has(String(val))
+      : String(val) === String(highlightVal);
+    el.style.outline = isHighlighted ? '3px solid #2ec4b6' : 'none';
+    el.style.zIndex = isHighlighted ? '2' : '1';
   }
   // Remove deleted
   for (const [val, el] of Object.entries(existing)) {
@@ -699,15 +889,22 @@ function insNextStep() {
   steps.forEach((step, si) => {
     setTimeout(() => {
       if (step.type === 'insert') {
-        insLog(`BST insert ${step.node} as RED node`);
+        insLog(step.reason || `BST insert ${step.node} as RED node`);
       } else if (step.type === 'color') {
         insLog(`Color ${step.node} → ${step.color}. ${step.reason}`);
+      } else if (step.type === 'violation') {
+        insLog(step.reason);
+      } else if (step.type === 'case') {
+        insLog(step.reason);
+      } else if (step.type === 'final') {
+        insLog(step.reason);
       } else if (step.type === 'recolor') {
         insLog(step.reason);
       } else if (step.type === 'rotate') {
         insLog(step.reason);
       }
-      renderInsTree(val);
+      if (step.snapshot) renderInsSnapshot(step.snapshot, step.highlight || step.nodes || [val]);
+      else renderInsTree(val);
       // After last step
       if (si === steps.length - 1) {
         setTimeout(() => {
