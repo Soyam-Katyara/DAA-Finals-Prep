@@ -241,14 +241,25 @@
       </div>
       <div class="info-section">
         <strong>Red-Black Tree Insertion</strong>
-        <ol>
-          <li><strong>Initial Insertion:</strong> Add your new node (x) just like you would in a standard Binary Search Tree and color it RED.</li>
-          <li><strong>The Root Rule:</strong> If x is the very first node in the tree (the root), simply change its color to BLACK and you are done.</li>
-          <li><strong>Check for Red-Red Violations:</strong> If x's parent is also RED, the rules are broken. You must fix the tree by looking at the color of x's "uncle" (the parent's sibling).</li>
-          <li><strong>The Fix: If the Uncle is RED:</strong> Change both the parent and the uncle to BLACK, and change the grandparent to RED. Because the grandparent might now cause a new violation higher up, treat the grandparent as your new x and repeat the rules from step 2.</li>
-          <li><strong>The Fix: If the Uncle is BLACK (or missing):</strong> You need to physically rotate the nodes to balance the tree. The type of rotation depends on the "shape" formed by x, its parent, and its grandparent.</li>
-          <li><strong>Rotating and Recoloring:</strong> For a "Straight Line" shape (Left-Left or Right-Right alignment), perform a single rotation and swap the colors of the parent and grandparent. For a "Zig-Zag" shape (Left-Right or Right-Left alignment), perform a double rotation and swap the colors of x and the grandparent.</li>
-        </ol>
+         <p>
+          <strong>Let x be the newly inserted node.</strong>
+          Perform standard BST insertion and make the colour of newly inserted nodes as RED. <br>
+          If x is the root, change the colour of x as BLACK (Black height of complete tree increases by 1). <br>
+          Do the following if the color of x's parent is not BLACK and x is not the root. <br>
+          <strong>a) If x's uncle is RED</strong> (Grandparent must have been black from property 4) <br>
+          ----(i) Change the colour of parent and uncle as BLACK. <br>
+          ----(ii) Colour of a grandparent as RED. <br>
+          ----(iii) Change x = x's grandparent, repeat steps 2 and 3 for new x. <br>
+          <strong>b) If x's uncle is BLACK</strong> then there can be four configurations for x, x's parent (p) and x's grandparent (g) (This is similar to AVL Tree) <br>
+          ----(i) Left Left Case (p is left child of g and x is left child of p) <br>
+          ----(ii) Left Right Case (p is left child of g and x is the right child of p) <br>
+          ----(iii) Right Right Case (Mirror of case i) <br>
+          ----(iv) Right Left Case (Mirror of case ii) <br>
+          <br>
+          <strong>Re-coloring after rotations:</strong><br>
+          For Left Left Case [3.b (i)] and Right Right case [3.b (iii)], swap colors of grandparent and parent after rotations<br>
+          For Left Right Case [3.b (ii)]and Right Left Case [3.b (iv)], swap colors of grandparent and inserted node after rotations
+        <p>
       </div>
     </div>
   </div>
