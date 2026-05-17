@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heap Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14; --surface: #161920; --border: #252830;
+    --accent: #00e5ff; --accent2: #ff6b35; --accent3: #a8ff3e;
+    --text: #e8eaf0; --muted: #5a5f70; --node-default: #1e2330;
+    --compare: #ff6b35; --swap: #a8ff3e; --inserted: #00e5ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+  nav.page-nav { display: flex; border-bottom: 1px solid var(--border); }
+  .nav-btn {
+    flex: 1; padding: 14px; background: none; border: none; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer;
+    border-right: 1px solid var(--border); transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .nav-btn:last-child { border-right: none; }
+  .nav-btn.active { color: var(--accent); background: #00e5ff0d; border-bottom: 2px solid var(--accent); }
+  .nav-btn:hover:not(.active) { color: var(--text); background: #ffffff06; }
+  .page { display: none; padding: 20px; max-width: 860px; margin: 0 auto; }
+  .page.active { display: block; }
+  /* INTRO */
+  .intro-hero { text-align: center; padding: 36px 0 24px; }
+  .intro-hero h1 { font-size: 52px; font-weight: 800; color: var(--accent); letter-spacing: -2px; }
+  .intro-hero p { color: var(--muted); font-size: 13px; font-family: 'JetBrains Mono', monospace; margin-top: 6px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+  .card h3 { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .card p, .card li { font-size: 13px; color: #aeb5c8; line-height: 1.7; font-family: 'JetBrains Mono', monospace; }
+  .card ul { padding-left: 16px; }
+  .card li { margin-bottom: 4px; }
+  .props { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .prop-box { background: #0d0f14; border: 1px solid var(--border); border-radius: 6px; padding: 14px; }
+  .prop-box .label { font-size: 10px; color: var(--accent2); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .prop-box .val { font-size: 13px; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+  .formula { background: #0a0c10; border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent3); margin: 8px 0; }
+  /* HEAP */
+  h2 { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 14px; }
+  .sequence { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .seq-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); margin-right: 4px; }
+  .seq-node {
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+    transition: all 0.3s; background: var(--node-default); color: var(--muted);
+  }
+  .seq-node.inserted { border-color: var(--accent3); color: var(--accent3); background: #a8ff3e12; }
+  .seq-node.current { border-color: var(--inserted); color: var(--inserted); background: #00e5ff12; animation: pulse 0.6s ease; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+  .controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    padding: 7px 16px; background: none; border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; border-radius: 4px; cursor: pointer;
+    transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .btn:hover { background: #00e5ff1a; }
+  .btn:disabled { border-color: var(--border); color: var(--muted); cursor: not-allowed; background: none; }
+  .btn.orange { border-color: var(--accent2); color: var(--accent2); }
+  .btn.orange:hover { background: #ff6b351a; }
+  .status-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 9px 13px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--accent); margin-bottom: 14px; min-height: 36px;
+  }
+  .status-bar .op { color: var(--muted); }
+  .tree-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px 8px 0 0; overflow: hidden; }
+  svg.tree { width: 100%; display: block; }
+  .tree-node circle { fill: var(--node-default); stroke: #3a4060; stroke-width: 2; transition: all 0.4s; }
+  .tree-node text { fill: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+  .tree-node.highlight circle { fill: #00e5ff1a; stroke: var(--inserted); }
+  .tree-node.compare circle { fill: #ff6b351a; stroke: var(--compare); }
+  .tree-node.swap circle { fill: #a8ff3e1a; stroke: var(--swap); }
+  line.edge { stroke: var(--border); stroke-width: 1.5; }
+  .array-view { display: flex; gap: 2px; flex-wrap: wrap; }
+  .arr-cell {
+    min-width: 36px; height: 36px; border: 1px solid var(--border); background: var(--node-default);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; position: relative;
+    border-radius: 3px; transition: all 0.3s;
+  }
+  .arr-cell .idx { position: absolute; top: -15px; font-size: 9px; color: var(--muted); width: 100%; text-align: center; }
+  .arr-cell.highlight { border-color: var(--inserted); color: var(--inserted); background: #00e5ff0a; }
+  .arr-cell.compare { border-color: var(--compare); color: var(--compare); background: #ff6b350a; }
+  .arr-cell.swap { border-color: var(--swap); color: var(--swap); background: #a8ff3e0a; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); }
+  .leg-dot { width: 9px; height: 9px; border-radius: 50%; }
+  /* SORT */
+  .mode-sel { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 16px; width: fit-content; }
+  .mode-btn { padding: 7px 18px; background: none; border: none; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .mode-btn.active { background: var(--accent); color: #000; font-weight: 700; }
+  .terminal {
+    background: #080a0e; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; height: 150px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    margin-top: 12px; scroll-behavior: smooth;
+  }
+  .term-line { line-height: 1.9; }
+  .term-line.info { color: var(--muted); }
+  .term-line.output { color: #fff; }
+  .term-line.swap { color: var(--accent3); }
+  .term-line.section { color: var(--accent); }
+  .sort-out { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .sort-val { padding: 5px 11px; background: var(--node-default); border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 12px; border-radius: 4px; animation: fadeIn 0.3s ease; }
+  .sort-val.done { border-color: var(--accent3); color: var(--accent3); }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+  .arr-sub { padding: 10px 12px 12px; background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; }
+  .arr-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  .custom-controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .custom-controls input {
+    min-width: 220px; flex: 1; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; padding: 7px 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html" class="active">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<nav class="page-nav">
+  <button class="nav-btn active" onclick="showPage('intro',this)">Intro</button>
+  <button class="nav-btn" onclick="showPage('min',this)">Min Heap</button>
+  <button class="nav-btn" onclick="showPage('max',this)">Max Heap</button>
+  <button class="nav-btn" onclick="showPage('sort',this)">Heap Sort</button>
+</nav>
+
+<!-- INTRO -->
+<div class="page active" id="page-intro">
+  <div class="intro-hero">
+    <h1>HEAP</h1>
+    <p>// A complete binary tree satisfying the heap property</p>
+  </div>
+  <div class="card">
+    <h3>What is a Heap?</h3>
+    <p>A <strong style="color:var(--accent)">heap</strong> is a complete binary tree where each node satisfies the <em>heap property</em> relative to its children. It is efficiently stored as a flat array — no pointers needed.</p>
+  </div>
+  <div class="props" style="margin-bottom:14px">
+    <div class="prop-box">
+      <div class="label">Min Heap</div>
+      <div class="val">Parent ≤ Children<br><span style="color:var(--muted);font-size:11px">Root = smallest element</span></div>
+    </div>
+    <div class="prop-box">
+      <div class="label">Max Heap</div>
+      <div class="val">Parent ≥ Children<br><span style="color:var(--muted);font-size:11px">Root = largest element</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Array Index Formulas (1-based)</h3>
+    <div class="formula">Left Child  →  2 × i</div>
+    <div class="formula">Right Child →  2 × i + 1</div>
+    <div class="formula">Parent      →  ⌊ i / 2 ⌋</div>
+  </div>
+  <div class="card">
+    <h3>Time Complexity</h3>
+    <ul>
+      <li><span style="color:var(--accent2)">Insert (heapify up)</span> → <span style="color:var(--accent3)">O(log n)</span></li>
+      <li><span style="color:var(--accent2)">Extract Root (heapify down)</span> → <span style="color:var(--accent3)">O(log n)</span></li>
+      <li><span style="color:var(--accent2)">Peek Root</span> → <span style="color:var(--accent3)">O(1)</span></li>
+      <li><span style="color:var(--accent2)">Heap Sort (build + extract all)</span> → <span style="color:var(--accent3)">O(n log n)</span></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Common Use Cases</h3>
+    <ul>
+      <li>Priority Queues — OS scheduling, Dijkstra, A* pathfinding</li>
+      <li>Heap Sort — in-place, O(n log n) comparison sort</li>
+      <li>Finding k-th largest/smallest in a stream</li>
+      <li>Median maintenance in real-time data</li>
+    </ul>
+  </div>
+</div>
+
+<!-- MIN HEAP -->
+<div class="page" id="page-min">
+  <h2>Min Heap — Step-by-step Insertion</h2>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--inserted)"></div>Inserted / Active</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--compare)"></div>Comparing</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--swap)"></div>Swapped</div>
+  </div>
+  <div class="sequence" id="min-seq"></div>
+  <div class="custom-controls">
+    <input id="min-custom" type="text" placeholder="Custom insertion: 14, 24, 12">
+    <button class="btn" onclick="applyHeapCustom('min')">Use Custom Insertion</button>
+  </div>
+  <div class="controls">
+    <button class="btn" id="min-prev-btn" onclick="minPrev()">◀ Prev Step</button>
+    <button class="btn" id="min-next-btn" onclick="minStep()">Next Step ▶</button>
+    <button class="btn orange" onclick="resetHeap('min')">Reset ↺</button>
+  </div>
+  <div class="status-bar" id="min-status"><span class="op">// Press "Next Step" to begin</span></div>
+  <div class="tree-wrap"><svg class="tree" id="min-svg" height="260"></svg></div>
+  <div class="arr-sub"><div class="arr-label">Array (1-indexed):</div><div class="array-view" id="min-arr"></div></div>
+</div>
+
+<!-- MAX HEAP -->
+<div class="page" id="page-max">
+  <h2>Max Heap — Step-by-step Insertion</h2>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--inserted)"></div>Inserted / Active</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--compare)"></div>Comparing</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--swap)"></div>Swapped</div>
+  </div>
+  <div class="sequence" id="max-seq"></div>
+  <div class="custom-controls">
+    <input id="max-custom" type="text" placeholder="Custom insertion: 14, 24, 12">
+    <button class="btn" onclick="applyHeapCustom('max')">Use Custom Insertion</button>
+  </div>
+  <div class="controls">
+    <button class="btn" id="max-prev-btn" onclick="maxPrev()">◀ Prev Step</button>
+    <button class="btn" id="max-next-btn" onclick="maxStep()">Next Step ▶</button>
+    <button class="btn orange" onclick="resetHeap('max')">Reset ↺</button>
+  </div>
+  <div class="status-bar" id="max-status"><span class="op">// Press "Next Step" to begin</span></div>
+  <div class="tree-wrap"><svg class="tree" id="max-svg" height="260"></svg></div>
+  <div class="arr-sub"><div class="arr-label">Array (1-indexed):</div><div class="array-view" id="max-arr"></div></div>
+</div>
+
+<!-- HEAP SORT -->
+<div class="page" id="page-sort">
+  <h2>Heap Sort</h2>
+  <div class="mode-sel">
+    <button class="mode-btn active" id="sort-min-btn" onclick="setSortMode('min')">With Min Heap</button>
+    <button class="mode-btn" id="sort-max-btn" onclick="setSortMode('max')">With Max Heap</button>
+  </div>
+  <div class="custom-controls">
+    <input id="sort-custom" type="text" placeholder="Custom heap sort input: 14, 24, 12">
+    <button class="btn" onclick="applyHeapCustom('sort')">Use Custom Input</button>
+  </div>
+  <div class="controls">
+    <button class="btn" id="sort-prev-btn" onclick="sortPrev()">◀ Prev Step</button>
+    <button class="btn" id="sort-next-btn" onclick="sortStep()">Next Step ▶</button>
+    <button class="btn orange" onclick="resetSort()">Reset ↺</button>
+  </div>
+  <div class="status-bar" id="sort-status"><span class="op">// Min Heap → Ascending. Press "Next Step".</span></div>
+  <div class="tree-wrap"><svg class="tree" id="sort-svg" height="260"></svg></div>
+  <div class="arr-sub"><div class="arr-label">Active Heap Array:</div><div class="array-view" id="sort-arr"></div></div>
+  <div style="margin-top:12px;">
+    <div class="arr-label">Sorted Output:</div>
+    <div class="sort-out" id="sort-out"></div>
+  </div>
+  <div class="terminal" id="sort-terminal">
+    <div class="term-line info">$ heap_sort --mode=min --input=[14,24,12,11,25,8,35]</div>
+    <div class="term-line info">// Press "Next Step" to begin</div>
+  </div>
+</div>
+
+<script>
+let VALUES = [14, 24, 12, 11, 25, 8, 35];
+
+// ── Tree positions (% width, px from top, r=20)
+const POS = {
+  1:[50,35], 2:[25,95], 3:[75,95],
+  4:[12.5,155], 5:[37.5,155], 6:[62.5,155], 7:[87.5,155]
+};
+
+function drawTree(svgId, heap, highlights, greyFrom) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const W = svg.getBoundingClientRect().width || 800;
+  function px(p){ return [p[0]/100*W, p[1]]; }
+
+  for (let i = 2; i <= heap.length; i++) {
+    if (greyFrom !== undefined && i > greyFrom) continue;
+    const p = Math.floor(i/2);
+    const [x1,y1]=px(POS[p]), [x2,y2]=px(POS[i]);
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('x1',x1);ln.setAttribute('y1',y1);ln.setAttribute('x2',x2);ln.setAttribute('y2',y2);
+    ln.setAttribute('class','edge');
+    if (greyFrom !== undefined && (i > greyFrom || p > greyFrom)) ln.setAttribute('stroke','#1a1d26');
+    svg.appendChild(ln);
+  }
+  for (let i = 1; i <= heap.length; i++) {
+    const [x,y] = px(POS[i]);
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    let cls = 'tree-node';
+    if (greyFrom !== undefined && i > greyFrom) cls += ' grey';
+    else cls += ' ' + (highlights[i]||'');
+    g.setAttribute('class', cls);
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',20);
+    if (greyFrom !== undefined && i > greyFrom) {
+      c.setAttribute('fill','#0d0f14');c.setAttribute('stroke','#1a1d26');
+    }
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x);t.setAttribute('y',y);
+    t.setAttribute('fill', greyFrom !== undefined && i > greyFrom ? '#2a2d38' : '');
+    t.textContent = heap[i-1];
+    g.appendChild(c);g.appendChild(t);
+    svg.appendChild(g);
+  }
+}
+
+function drawArr(id, heap, highlights, size) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  for (let i = 0; i < heap.length; i++) {
+    const d = document.createElement('div');
+    const inActive = size === undefined || i < size;
+    d.className = 'arr-cell ' + (inActive ? (highlights[i+1]||'') : '');
+    if (!inActive) d.style.opacity = '0.25';
+    d.innerHTML = `<span class="idx">${i+1}</span>${heap[i]}`;
+    el.appendChild(d);
+  }
+}
+
+// ── Heap State Machine
+function makeHeapSM(type) {
+  const isMin = type === 'min';
+  const cmp = isMin ? (a,b)=>a<b : (a,b)=>a>b;
+  let heap=[], steps=[], stepIdx=0, valIdx=0, seqIdx=-1;
+
+  function genInsert(val) {
+    const loc = [];
+    heap.push(val);
+    const pos = heap.length;
+    loc.push({heap:[...heap], highlights:{[pos]:'highlight'}, seqIdx:valIdx,
+      msg:`<span class="op">Insert</span> <span style="color:var(--inserted)">${val}</span> at index ${pos}`});
+    let i = pos;
+    while (i > 1) {
+      const p = Math.floor(i/2);
+      const op = isMin ? '<' : '>';
+      loc.push({heap:[...heap], highlights:{[i]:'highlight',[p]:'compare'}, seqIdx:valIdx,
+        msg:`<span class="op">Compare</span> <span style="color:var(--inserted)">${heap[i-1]}</span> ${op} <span style="color:var(--compare)">${heap[p-1]}</span>?`});
+      if (cmp(heap[i-1],heap[p-1])) {
+        [heap[i-1],heap[p-1]]=[heap[p-1],heap[i-1]];
+        loc.push({heap:[...heap], highlights:{[i]:'swap',[p]:'swap'}, seqIdx:valIdx,
+          msg:`<span style="color:var(--swap)">Swap!</span> ${heap[p-1]} moves up to position ${p}`});
+        i = p;
+      } else {
+        loc.push({heap:[...heap], highlights:{[i]:'highlight'}, seqIdx:valIdx,
+          msg:`<span class="op">No swap.</span> <span style="color:var(--inserted)">${heap[i-1]}</span> satisfies heap property.`});
+        break;
+      }
+    }
+    if (i===1) loc.push({heap:[...heap], highlights:{1:'highlight'}, seqIdx:valIdx,
+      msg:`<span style="color:var(--accent3)">${heap[0]}</span> reached the root ✓`});
+    return loc;
+  }
+
+  function reset(){ heap=[];steps=[];stepIdx=0;valIdx=0;seqIdx=-1; }
+  function next(){
+    if (stepIdx >= steps.length){
+      if (valIdx >= VALUES.length) return null;
+      seqIdx = valIdx;
+      steps = steps.concat(genInsert(VALUES[valIdx]));
+      valIdx++;
+    }
+    return steps[stepIdx++];
+  }
+  function prev(){
+    if (stepIdx <= 1) { stepIdx = 0; return null; }
+    stepIdx--;
+    return steps[stepIdx - 1];
+  }
+  function isDone(){ return valIdx>=VALUES.length && stepIdx>=steps.length; }
+  return {next,prev,reset,isDone};
+}
+
+let minSM = makeHeapSM('min');
+let maxSM = makeHeapSM('max');
+
+function renderStep(type, s) {
+  drawTree(`${type}-svg`, s.heap, s.highlights);
+  drawArr(`${type}-arr`, s.heap, s.highlights);
+  document.getElementById(`${type}-status`).innerHTML = s.msg;
+  renderSeq(`${type}-seq`, s.seqIdx);
+}
+
+function renderSeq(id, si) {
+  document.querySelectorAll(`#${id} .seq-node`).forEach((n,i)=>{
+    n.className='seq-node'+(i<si?' inserted':i===si?' current':'');
+  });
+}
+
+function minStep(){
+  const s = minSM.next();
+  if (!s){ document.getElementById('min-next-btn').disabled=true;
+    document.getElementById('min-status').innerHTML=`<span style="color:var(--accent3)">✓ Min Heap complete!</span>`; return; }
+  renderStep('min',s);
+  document.getElementById('min-prev-btn').disabled=false;
+  document.getElementById('min-next-btn').disabled=false;
+}
+function maxStep(){
+  const s = maxSM.next();
+  if (!s){ document.getElementById('max-next-btn').disabled=true;
+    document.getElementById('max-status').innerHTML=`<span style="color:var(--accent3)">✓ Max Heap complete!</span>`; return; }
+  renderStep('max',s);
+  document.getElementById('max-prev-btn').disabled=false;
+  document.getElementById('max-next-btn').disabled=false;
+}
+function minPrev(){
+  const s = minSM.prev();
+  if (!s) resetHeap('min');
+  else { renderStep('min',s); document.getElementById('min-next-btn').disabled=false; }
+}
+function maxPrev(){
+  const s = maxSM.prev();
+  if (!s) resetHeap('max');
+  else { renderStep('max',s); document.getElementById('max-next-btn').disabled=false; }
+}
+function resetHeap(type){
+  if(type==='min'){minSM.reset();document.getElementById('min-next-btn').disabled=false;
+    document.getElementById('min-prev-btn').disabled=true;
+    document.getElementById('min-status').innerHTML='<span class="op">// Press "Next Step" to begin</span>';
+    document.getElementById('min-svg').innerHTML='';document.getElementById('min-arr').innerHTML='';
+    renderSeq('min-seq',-1);}
+  else{maxSM.reset();document.getElementById('max-next-btn').disabled=false;
+    document.getElementById('max-prev-btn').disabled=true;
+    document.getElementById('max-status').innerHTML='<span class="op">// Press "Next Step" to begin</span>';
+    document.getElementById('max-svg').innerHTML='';document.getElementById('max-arr').innerHTML='';
+    renderSeq('max-seq',-1);}
+}
+
+// ── Build final heap (used by sort)
+function buildHeap(type){
+  const isMin=type==='min';
+  const cmp=isMin?(a,b)=>a<b:(a,b)=>a>b;
+  let h=[];
+  VALUES.forEach(v=>{
+    h.push(v);let i=h.length;
+    while(i>1){const p=Math.floor(i/2);if(cmp(h[i-1],h[p-1])){[h[i-1],h[p-1]]=[h[p-1],h[i-1]];i=p;}else break;}
+  });
+  return h;
+}
+
+// ── Heap Sort steps
+let sortMode='min', sortSteps=[], sortIdx=0;
+
+function genSortSteps(type){
+  const isMin=type==='min';
+  const cmp=isMin?(a,b)=>a<b:(a,b)=>a>b;
+  let h=buildHeap(type);
+  const steps=[];
+  const extracted=[];
+  let size=h.length;
+
+  steps.push({heap:[...h],size,highlights:{1:'highlight'},extracted:[...extracted],
+    msg:`Heap ready. Root = <span style="color:var(--accent)">${h[0]}</span>. Start extracting...`,
+    log:{cls:'section',text:`=== Heap Sort (${type} heap) ===`}});
+
+  while(size>0){
+    const root=h[0];
+    steps.push({heap:[...h],size,highlights:{1:'highlight',[size]:'compare'},extracted:[...extracted],
+      msg:`Swap root <span style="color:var(--inserted)">${root}</span> ↔ last <span style="color:var(--compare)">${h[size-1]}</span>`,
+      log:{cls:'output',text:`>> Extract root: ${root}`}});
+    [h[0],h[size-1]]=[h[size-1],h[0]];
+    extracted.push(root); size--;
+    steps.push({heap:[...h],size,highlights:{1:'swap'},extracted:[...extracted],
+      msg:`Removed <span style="color:var(--accent3)">${root}</span>. Heapify down...`, log:null});
+
+    let i=1;
+    while(true){
+      let t=i,l=2*i,r=2*i+1;
+      if(l<=size&&cmp(h[l-1],h[t-1])) t=l;
+      if(r<=size&&cmp(h[r-1],h[t-1])) t=r;
+      if(t===i){
+        steps.push({heap:[...h],size,highlights:{[i]:'highlight'},extracted:[...extracted],
+          msg:`<span style="color:var(--accent3)">Heap property restored</span> — ${size>0?'ready for next extraction.':'All done!'}`,
+          log:null});
+        break;
+      }
+      steps.push({heap:[...h],size,highlights:{[i]:'compare',[t]:'compare'},extracted:[...extracted],
+        msg:`Compare node[${i}]=${h[i-1]} with child[${t}]=${h[t-1]}`, log:null});
+      [h[i-1],h[t-1]]=[h[t-1],h[i-1]];
+      steps.push({heap:[...h],size,highlights:{[i]:'swap',[t]:'swap'},extracted:[...extracted],
+        msg:`<span style="color:var(--swap)">Swap!</span> ${h[i-1]} bubbles up`, log:null});
+      i=t;
+    }
+  }
+  steps.push({heap:[...h],size:0,highlights:{},extracted:[...extracted],
+    msg:`<span style="color:var(--accent3)">✓ Sort complete!</span> Output: [${extracted.join(', ')}]`,
+    log:{cls:'swap',text:`Sorted: [${extracted.join(', ')}]`}});
+  return steps;
+}
+
+function setSortMode(m){
+  sortMode=m;
+  document.getElementById('sort-min-btn').className='mode-btn'+(m==='min'?' active':'');
+  document.getElementById('sort-max-btn').className='mode-btn'+(m==='max'?' active':'');
+  resetSort();
+}
+function resetSort(){
+  sortSteps=genSortSteps(sortMode); sortIdx=0;
+  document.getElementById('sort-next-btn').disabled=false;
+  document.getElementById('sort-prev-btn').disabled=true;
+  const h=buildHeap(sortMode);
+  drawTree('sort-svg',h,{1:'highlight'});
+  drawArr('sort-arr',h,{1:'highlight'},h.length);
+  document.getElementById('sort-out').innerHTML='';
+  document.getElementById('sort-status').innerHTML=
+    `<span class="op">// ${sortMode==='min'?'Min Heap → Ascending':'Max Heap → Descending'}. Press "Next Step".</span>`;
+  document.getElementById('sort-terminal').innerHTML=
+    `<div class="term-line info">$ heap_sort --mode=${sortMode} --input=[${VALUES}]</div>`+
+    `<div class="term-line info">// Press "Next Step" to begin</div>`;
+}
+function renderSortState(s) {
+  drawTree('sort-svg',s.heap,s.highlights,s.size);
+  drawArr('sort-arr',s.heap,s.highlights,s.size);
+  document.getElementById('sort-status').innerHTML=s.msg;
+  const outEl=document.getElementById('sort-out');
+  outEl.innerHTML='';
+  s.extracted.forEach(v=>{
+    const d=document.createElement('div');
+    d.className='sort-val done';d.textContent=v;outEl.appendChild(d);
+  });
+  if(s.log){
+    const term=document.getElementById('sort-terminal');
+    const line=document.createElement('div');
+    line.className='term-line '+s.log.cls;
+    line.textContent=s.log.text;
+    term.appendChild(line);term.scrollTop=term.scrollHeight;
+  }
+}
+function sortStep(){
+  if(sortIdx>=sortSteps.length){document.getElementById('sort-next-btn').disabled=true;return;}
+  const s=sortSteps[sortIdx++];
+  renderSortState(s);
+  document.getElementById('sort-prev-btn').disabled=false;
+  if(sortIdx>=sortSteps.length) document.getElementById('sort-next-btn').disabled=true;
+}
+function sortPrev(){
+  if(sortIdx <= 1) { resetSort(); return; }
+  const target = sortIdx - 1;
+  resetSort();
+  for (let i = 0; i < target - 1; i++) renderSortState(sortSteps[i]);
+  renderSortState(sortSteps[target - 1]);
+  sortIdx = target;
+  document.getElementById('sort-prev-btn').disabled = sortIdx <= 1;
+  document.getElementById('sort-next-btn').disabled = false;
+}
+
+function parseValues(raw) {
+  return raw.split(/[\s,]+/).map(v => parseInt(v, 10)).filter(Number.isFinite);
+}
+
+function applyHeapCustom(target) {
+  const inputId = target === 'sort' ? 'sort-custom' : `${target}-custom`;
+  const vals = parseValues(document.getElementById(inputId).value);
+  if (!vals.length) return;
+  VALUES = vals;
+  initSeqs();
+  minSM = makeHeapSM('min');
+  maxSM = makeHeapSM('max');
+  resetHeap('min');
+  resetHeap('max');
+  resetSort();
+}
+
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Init sequences
+function initSeqs(){
+  ['min-seq','max-seq'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML='<span class="seq-label">Insert sequence:</span>';
+    VALUES.forEach(v=>{
+      const d=document.createElement('div');
+      d.className='seq-node';d.textContent=v;el.appendChild(d);
+    });
+  });
+}
+initSeqs();
+resetHeap('min');
+resetHeap('max');
+resetSort();
+</script>
+</body>
+</html>

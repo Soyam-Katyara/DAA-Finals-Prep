@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dijkstra's Algorithm</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --panel: #161b27;
+    --border: #2a3147;
+    --accent: #4fffb0;
+    --accent2: #ff6b6b;
+    --accent3: #ffd93d;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --node-default: #1e2740;
+    --node-visited: #1a3a2a;
+    --node-current: #3a2a00;
+    --node-path: #1a3550;
+    --edge-default: #2a3147;
+    --edge-active: #4fffb0;
+    --edge-path: #ffd93d;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--panel);
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  label { font-size: 0.75rem; color: var(--muted); }
+
+  select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  button:hover { border-color: var(--accent); color: var(--accent); }
+
+  button.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  button.primary:hover { opacity: 0.85; color: #000; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* LEFT PANEL */
+  .left-panel {
+    width: 340px;
+    min-width: 280px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--panel);
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dist-table {
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  th {
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 8px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(42,49,71,0.5);
+    transition: background 0.3s, color 0.3s;
+  }
+
+  tr.current-row td { background: rgba(255,217,61,0.08); color: var(--accent3); }
+  tr.visited-row td { color: var(--accent); }
+  tr.path-row td { background: rgba(79,255,176,0.06); }
+
+  .node-badge {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--node-default);
+    border: 1px solid var(--border);
+  }
+
+  .dist-val { font-weight: 700; }
+  .dist-inf { color: var(--muted); }
+  .dist-num { color: var(--accent); }
+
+  .log-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 14px;
+    font-size: 0.76rem;
+    line-height: 1.8;
+  }
+
+  .log-entry { color: var(--muted); }
+  .log-entry.active { color: var(--text); }
+  .log-entry.highlight { color: var(--accent3); }
+  .log-entry.done { color: var(--accent); }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #graph-canvas {
+    flex: 1;
+    width: 100%;
+  }
+
+  .status-bar {
+    padding: 6px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--panel);
+    display: flex;
+    gap: 20px;
+  }
+
+  .status-bar span { color: var(--text); }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html" class="active">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<header>
+  <h1>⬡ Dijkstra's Algo</h1>
+  <div class="controls">
+    <label>Source:</label>
+    <select id="sourceSelect">
+      <option>A</option><option>B</option><option>C</option>
+      <option>D</option><option>E</option><option>F</option>
+    </select>
+    <button id="resetBtn">Reset</button>
+    <button id="prevBtn">← Step</button>
+    <button id="stepBtn" class="primary">Step →</button>
+    <button id="autoBtn">Auto Run</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="panel-title">Distance Table</div>
+    <div class="dist-table">
+      <table id="distTable">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Distance</th>
+            <th>Prev</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="distBody"></tbody>
+      </table>
+    </div>
+    <div class="panel-title" style="border-top:1px solid var(--border);border-bottom:1px solid var(--border)">Step-by-Step Log</div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-title" style="padding:8px 16px">Graph</div>
+    <canvas id="graph-canvas"></canvas>
+    <div class="status-bar">
+      Step: <span id="stepCount">0</span> &nbsp;|&nbsp;
+      Current Node: <span id="currentNodeStatus">—</span> &nbsp;|&nbsp;
+      Queue: <span id="queueStatus">—</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Graph Data ──────────────────────────────────────────────────
+const EDGES_RAW = [
+  ['A','B',7],['A','C',9],['A','F',14],
+  ['B','C',10],['B','D',15],
+  ['C','D',11],['C','F',2],
+  ['D','E',6],
+  ['E','F',9]
+];
+
+const NODES = ['A','B','C','D','E','F'];
+
+// Build adjacency list
+const adj = {};
+NODES.forEach(n => adj[n] = []);
+EDGES_RAW.forEach(([u,v,w]) => {
+  adj[u].push({to:v, w});
+  adj[v].push({to:u, w});
+});
+
+// Node positions (for canvas)
+const NODE_POS = {
+  A: {x:0.15, y:0.45},
+  B: {x:0.35, y:0.20},
+  C: {x:0.50, y:0.50},
+  D: {x:0.68, y:0.22},
+  E: {x:0.83, y:0.55},
+  F: {x:0.50, y:0.78},
+};
+
+// ── State ────────────────────────────────────────────────────────
+let dist = {}, prev = {}, visited = new Set(), queue = [], source = 'A';
+let currentNode = null, stepNo = 0, done = false, pathEdges = new Set(), activeEdges = new Set();
+let logs = [];
+let showResult = false;
+
+function initDijkstra() {
+  source = document.getElementById('sourceSelect').value;
+  dist = {}; prev = {}; visited.clear(); queue = [];
+  currentNode = null; stepNo = 0; done = false;
+  pathEdges.clear(); activeEdges.clear(); logs = []; showResult = false;
+  NODES.forEach(n => { dist[n] = Infinity; prev[n] = null; });
+  dist[source] = 0;
+  queue = [{node: source, d: 0}];
+  addLog(`Starting from node ${source}.`, 'active');
+  addLog(`We set ${source}'s distance to 0 — we are already here!`, 'active');
+  addLog(`All other nodes start at infinity (∞) — we don't know how to reach them yet.`, '');
+  addLog(`Next to explore: [ ${source} ]`, '');
+  updateTable(); updateStatus(); drawGraph();
+  document.getElementById('prevBtn').disabled = true;
+}
+
+function addLog(msg, cls='') {
+  logs.push({msg, cls});
+  const lb = document.getElementById('logBox');
+  const d = document.createElement('div');
+  d.className = 'log-entry ' + cls;
+  d.textContent = msg;
+  lb.appendChild(d);
+  lb.scrollTop = lb.scrollHeight;
+}
+
+function addSep() {
+  const lb = document.getElementById('logBox');
+  const hr = document.createElement('div');
+  hr.style.cssText = 'border-top:1px solid #2a3147;margin:5px 0;';
+  lb.appendChild(hr);
+}
+
+function step() {
+  if (done) return;
+  if (queue.length === 0) { finish(); return; }
+
+  queue.sort((a,b) => a.d - b.d);
+  const {node: u} = queue.shift();
+
+  if (visited.has(u)) { step(); return; }
+  visited.add(u);
+  currentNode = u;
+  stepNo++;
+  activeEdges.clear();
+
+  addSep();
+  addLog(`Step ${stepNo}: Pick node ${u} — smallest known distance is ${dist[u]}.`, 'highlight');
+  addLog(`  Node ${u} is confirmed. We will never find a shorter path to it.`, '');
+
+  for (const {to: v, w} of adj[u]) {
+    activeEdges.add(edgeKey(u,v));
+    if (visited.has(v)) {
+      addLog(`  Check ${u} → ${v} (w=${w}): ${v} is already confirmed, skip.`, '');
+      continue;
+    }
+    const newD = dist[u] + w;
+    const old = dist[v] === Infinity ? '∞' : dist[v];
+    if (newD < dist[v]) {
+      dist[v] = newD;
+      prev[v] = u;
+      queue.push({node:v, d:newD});
+      addLog(`  Check ${u} → ${v} (w=${w}): ${dist[u]} + ${w} = ${newD} < ${old}. Update! Best path to ${v} is now via ${u}.`, 'active');
+    } else {
+      addLog(`  Check ${u} → ${v} (w=${w}): ${dist[u]} + ${w} = ${newD} >= ${old}. No improvement, keep ${old}.`, '');
+    }
+  }
+
+  const pending = queue.filter(x=>!visited.has(x.node)).sort((a,b)=>a.d-b.d);
+  const qStr = pending.map(x=>`${x.node}(${x.d})`).join(', ');
+  addLog(`  Next to explore: [ ${qStr || 'none'} ]`, '');
+
+  updateTable(); updateStatus(); drawGraph();
+  document.getElementById('prevBtn').disabled = stepNo === 0;
+
+  if (pending.length === 0) { finish(); }
+}
+
+function prevStep() {
+  if (stepNo === 0) return;
+  const target = stepNo - 1;
+  document.getElementById('logBox').innerHTML = '';
+  initDijkstra();
+  for (let i = 0; i < target; i++) step();
+  document.getElementById('stepBtn').disabled = false;
+  document.getElementById('autoBtn').disabled = false;
+  document.getElementById('prevBtn').disabled = stepNo === 0;
+}
+
+function finish() {
+  done = true;
+  currentNode = null;
+  activeEdges.clear();
+  NODES.forEach(n => {
+    let cur = n;
+    while (prev[cur]) {
+      pathEdges.add(edgeKey(prev[cur], cur));
+      cur = prev[cur];
+    }
+  });
+  addSep();
+  addLog(`Done! All shortest distances from ${source} have been found.`, 'done');
+  addLog(`The graph now highlights the shortest-path tree — the best route to every node.`, 'done');
+  showResult = true;
+  updateTable(); updateStatus(); drawGraph();
+  document.getElementById('stepBtn').disabled = true;
+  document.getElementById('autoBtn').disabled = true;
+}
+
+function edgeKey(a, b) {
+  return [a,b].sort().join('-');
+}
+
+// ── Table ────────────────────────────────────────────────────────
+function updateTable() {
+  const tbody = document.getElementById('distBody');
+  tbody.innerHTML = '';
+  NODES.forEach(n => {
+    const tr = document.createElement('tr');
+    let cls = '';
+    if (n === currentNode) cls = 'current-row';
+    else if (visited.has(n)) cls = 'visited-row';
+    tr.className = cls;
+
+    const distStr = dist[n] === Infinity
+      ? `<span class="dist-inf">∞</span>`
+      : `<span class="dist-num">${dist[n]}</span>`;
+    const status = n === currentNode ? '◉ active'
+      : visited.has(n) ? '✓ done' : '○ pending';
+
+    tr.innerHTML = `
+      <td><span class="node-badge">${n}</span></td>
+      <td class="dist-val">${distStr}</td>
+      <td>${prev[n] || '—'}</td>
+      <td style="font-size:0.7rem;color:var(--muted)">${status}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateStatus() {
+  document.getElementById('stepCount').textContent = stepNo;
+  document.getElementById('currentNodeStatus').textContent = currentNode || (done ? 'Done ✓' : '—');
+  const q = queue.filter(x=>!visited.has(x.node)).sort((a,b)=>a.d-b.d).map(x=>`${x.node}(${x.d})`);
+  document.getElementById('queueStatus').textContent = q.join(', ') || (done ? '—' : 'empty');
+}
+
+// ── Canvas Drawing ───────────────────────────────────────────────
+const canvas = document.getElementById('graph-canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  drawGraph();
+}
+
+function px(node) {
+  const p = NODE_POS[node];
+  return { x: p.x * canvas.width, y: p.y * canvas.height };
+}
+
+function drawGraph() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // In result mode, only draw path edges; else draw all
+  const edgesToDraw = showResult
+    ? EDGES_RAW.filter(([u,v]) => pathEdges.has(edgeKey(u,v)))
+    : EDGES_RAW;
+
+  // Draw edges
+  EDGES_RAW.forEach(([u, v, w]) => {
+    const a = px(u), b = px(v);
+    const key = edgeKey(u, v);
+    const isPath = pathEdges.has(key);
+    const isActive = activeEdges.has(key);
+
+    if (showResult && !isPath) {
+      // Draw non-path edges faded
+      ctx.globalAlpha = 0.12;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    ctx.lineWidth = isPath ? 2.5 : isActive ? 2 : 1.5;
+    ctx.strokeStyle = isPath ? '#ffd93d' : isActive ? '#4fffb0' : '#2a3147';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+
+    // Weight label
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    ctx.fillStyle = isPath ? '#ffd93d' : isActive ? '#4fffb0' : '#64748b';
+    ctx.font = `${isPath || isActive ? 'bold' : ''} 11px JetBrains Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Offset label slightly
+    const dx = b.y - a.y, dy = a.x - b.x;
+    const len = Math.sqrt(dx*dx+dy*dy)||1;
+    ctx.fillText(w, mx + dx/len*12, my + dy/len*12);
+  });
+
+  // Draw nodes
+  const R = Math.min(W, H) * 0.042;
+  NODES.forEach(n => {
+    const p = px(n);
+    const isCurrent = n === currentNode;
+    const isVisited = visited.has(n);
+    const isSource = n === source;
+
+    // Glow for current
+    if (isCurrent) {
+      ctx.shadowColor = '#ffd93d';
+      ctx.shadowBlur = 18;
+    } else if (isVisited || showResult) {
+      ctx.shadowColor = '#4fffb0';
+      ctx.shadowBlur = showResult ? 10 : 8;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, R, 0, Math.PI*2);
+    ctx.fillStyle = isCurrent ? '#3a2a00'
+      : isVisited ? '#1a3a2a'
+      : '#1e2740';
+    ctx.fill();
+    ctx.strokeStyle = isCurrent ? '#ffd93d'
+      : isVisited ? '#4fffb0'
+      : isSource ? '#4fffb0'
+      : '#2a3147';
+    ctx.lineWidth = isCurrent ? 2.5 : isSource ? 2 : 1.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Node label
+    ctx.fillStyle = isCurrent ? '#ffd93d' : isVisited ? '#4fffb0' : '#e2e8f0';
+    ctx.font = `bold ${R * 0.9}px Syne, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n, p.x, p.y);
+
+    // Distance below node
+    const dVal = dist[n] === Infinity ? '∞' : dist[n];
+    ctx.fillStyle = isCurrent ? '#ffd93d' : isVisited ? '#4fffb0' : '#64748b';
+    ctx.font = `10px JetBrains Mono, monospace`;
+    ctx.fillText(dVal, p.x, p.y + R + 11);
+  });
+
+  // Result label
+  if (showResult) {
+    ctx.fillStyle = 'rgba(79,255,176,0.85)';
+    ctx.font = 'bold 12px Syne, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Shortest-Path Tree from ' + source, 12, 20);
+  }
+}
+
+// ── Auto Run ─────────────────────────────────────────────────────
+let autoTimer = null;
+document.getElementById('autoBtn').addEventListener('click', function() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; this.textContent = 'Auto Run'; return; }
+  this.textContent = 'Pause';
+  autoTimer = setInterval(() => {
+    if (done) { clearInterval(autoTimer); autoTimer = null; this.textContent = 'Auto Run'; return; }
+    step();
+  }, 900);
+});
+
+document.getElementById('stepBtn').addEventListener('click', step);
+document.getElementById('prevBtn').addEventListener('click', prevStep);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('autoBtn').textContent = 'Auto Run'; }
+  document.getElementById('stepBtn').disabled = false;
+  document.getElementById('autoBtn').disabled = false;
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('logBox').innerHTML = '';
+  initDijkstra();
+});
+document.getElementById('sourceSelect').addEventListener('change', () => {
+  document.getElementById('resetBtn').click();
+});
+
+window.addEventListener('resize', resize);
+resize();
+initDijkstra();
+</script>
+</body>
+</html>

@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topological Sort Visualizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --panel: #141720;
+    --border: #252a38;
+    --accent: #5af0a0;
+    --accent2: #f05a5a;
+    --accent3: #f0c05a;
+    --text: #d0d8f0;
+    --muted: #606880;
+    --node-default: #252a38;
+    --node-visiting: #f0c05a;
+    --node-visited: #5af0a0;
+    --node-in-stack: #a05af0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .nav-btns { display: flex; gap: 8px; }
+
+  .nav-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(90,240,160,0.06);
+  }
+
+  /* ===== VIEWS ===== */
+  .view { display: none; padding: 28px 32px; }
+  .view.active { display: block; }
+
+  /* ===== INTRO ===== */
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+
+  .intro-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .intro-card h3 {
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .intro-card.normal h3 { color: var(--accent2); }
+  .intro-card.dag h3 { color: var(--accent); }
+
+  .diff-list { list-style: none; }
+  .diff-list li {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .diff-list li:last-child { border-bottom: none; }
+  .diff-list li span.icon { flex-shrink: 0; }
+
+  .intro-svg-wrap { margin: 12px 0; text-align: center; }
+
+  .intro-btns {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .big-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    padding: 12px 28px;
+    border: 1px solid var(--accent);
+    background: rgba(90,240,160,0.08);
+    color: var(--accent);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .big-btn:hover { background: rgba(90,240,160,0.18); }
+  .big-btn.bfs {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(240,192,90,0.08);
+  }
+  .big-btn.bfs:hover { background: rgba(240,192,90,0.18); }
+
+  /* ===== MAIN ALGO LAYOUT ===== */
+  .algo-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+  }
+
+  .graph-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .graph-panel h2 {
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .right-panel { display: flex; flex-direction: column; gap: 14px; }
+
+  .info-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .info-box h4 {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* arrays */
+  .cell-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    min-width: 40px;
+    padding: 5px 8px;
+    background: var(--node-default);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .cell.visited { background: rgba(90,240,160,0.2); border-color: var(--accent); color: var(--accent); }
+  .cell.active  { background: rgba(240,192,90,0.2); border-color: var(--accent3); color: var(--accent3); }
+
+  /* stack / queue */
+  .sq-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 40px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .sq-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    background: rgba(160,90,240,0.18);
+    border: 1px solid #a05af0;
+    color: #c090f8;
+    transition: all 0.3s;
+    text-align: center;
+  }
+
+  /* terminal */
+  .terminal {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    background: #090b10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    min-height: 54px;
+    max-height: 100px;
+    overflow-y: auto;
+    color: var(--accent);
+    line-height: 1.6;
+  }
+
+  .terminal .prompt { color: var(--muted); }
+
+  /* controls */
+  .controls { display: flex; gap: 8px; margin-top: 12px; }
+
+  .ctrl-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 7px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ctrl-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+  .ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .ctrl-btn.go { border-color: var(--accent); color: var(--accent); background: rgba(90,240,160,0.08); }
+  .ctrl-btn.go:hover { background: rgba(90,240,160,0.18); }
+
+  /* legend */
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* step info */
+  .step-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.73rem;
+    color: var(--accent3);
+    min-height: 36px;
+    padding: 8px;
+    background: rgba(240,192,90,0.06);
+    border: 1px solid rgba(240,192,90,0.2);
+    border-radius: 4px;
+    line-height: 1.5;
+    margin-top: 10px;
+  }
+
+  /* SVG nodes */
+  .node-circle {
+    transition: fill 0.3s, stroke 0.3s;
+    cursor: pointer;
+  }
+
+  .label-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    fill: white;
+    pointer-events: none;
+    dominant-baseline: central;
+    text-anchor: middle;
+  }
+
+  @media (max-width: 820px) {
+    .algo-layout { grid-template-columns: 1fr; }
+    .intro-grid { grid-template-columns: 1fr; }
+    header { flex-wrap: wrap; }
+  }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html" class="active">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<header>
+  <h1>DAG · Topo Sort</h1>
+  <div class="nav-btns">
+    <button class="nav-btn" onclick="showView('intro')">Intro</button>
+    <button class="nav-btn" onclick="showView('dfs')">Topo Sort — DFS</button>
+    <button class="nav-btn" onclick="showView('bfs')">Topo Sort — BFS</button>
+  </div>
+</header>
+
+<!-- ============================== INTRO ============================== -->
+<div class="view active" id="view-intro">
+  <div class="intro-grid">
+
+    <div class="intro-card normal">
+      <h3>⚠ Normal Graph</h3>
+      <div class="intro-svg-wrap">
+        <svg width="220" height="160" viewBox="0 0 220 160">
+          <defs>
+            <marker id="ah-n" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#f05a5a"/>
+            </marker>
+          </defs>
+          <!-- edges with cycles + undirected hints -->
+          <line x1="60" y1="50" x2="110" y2="50" stroke="#f05a5a" stroke-width="1.5" marker-end="url(#ah-n)"/>
+          <line x1="110" y1="50" x2="160" y2="50" stroke="#f05a5a" stroke-width="1.5" marker-end="url(#ah-n)"/>
+          <line x1="160" y1="50" x2="160" y2="110" stroke="#f05a5a" stroke-width="1.5" marker-end="url(#ah-n)"/>
+          <line x1="160" y1="110" x2="60" y2="110" stroke="#f05a5a" stroke-width="1.5" marker-end="url(#ah-n)"/>
+          <line x1="60" y1="110" x2="60" y2="50" stroke="#f05a5a" stroke-width="1.5" marker-end="url(#ah-n)"/>
+          <!-- cycle label -->
+          <text x="110" y="85" text-anchor="middle" fill="#f05a5a" font-size="10" font-family="JetBrains Mono">CYCLE</text>
+          <!-- nodes -->
+          <circle cx="60" cy="50" r="18" fill="#252a38" stroke="#f05a5a" stroke-width="2"/>
+          <text x="60" y="50" class="label-text">A</text>
+          <circle cx="160" cy="50" r="18" fill="#252a38" stroke="#f05a5a" stroke-width="2"/>
+          <text x="160" y="50" class="label-text">B</text>
+          <circle cx="160" cy="110" r="18" fill="#252a38" stroke="#f05a5a" stroke-width="2"/>
+          <text x="160" y="110" class="label-text">C</text>
+          <circle cx="60" cy="110" r="18" fill="#252a38" stroke="#f05a5a" stroke-width="2"/>
+          <text x="60" y="110" class="label-text">D</text>
+          <circle cx="110" cy="50" r="18" fill="#252a38" stroke="#f05a5a" stroke-width="2"/>
+          <text x="110" y="50" class="label-text">E</text>
+        </svg>
+      </div>
+      <ul class="diff-list">
+        <li><span class="icon">🔴</span> Can contain cycles</li>
+        <li><span class="icon">🔴</span> Edges can be undirected</li>
+        <li><span class="icon">🔴</span> A→B→C→A is valid (back-edge)</li>
+      </ul>
+    </div>
+
+    <div class="intro-card dag">
+      <h3>✓ DAG (Directed Acyclic Graph)</h3>
+      <div class="intro-svg-wrap">
+        <svg width="220" height="160" viewBox="0 0 220 160">
+          <defs>
+            <marker id="ah-d" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#5af0a0"/>
+            </marker>
+          </defs>
+          <line x1="40" y1="80" x2="88" y2="50" stroke="#5af0a0" stroke-width="1.5" marker-end="url(#ah-d)"/>
+          <line x1="40" y1="80" x2="88" y2="110" stroke="#5af0a0" stroke-width="1.5" marker-end="url(#ah-d)"/>
+          <line x1="108" y1="46" x2="148" y2="46" stroke="#5af0a0" stroke-width="1.5" marker-end="url(#ah-d)"/>
+          <line x1="108" y1="114" x2="148" y2="114" stroke="#5af0a0" stroke-width="1.5" marker-end="url(#ah-d)"/>
+          <line x1="170" y1="58" x2="170" y2="98" stroke="#5af0a0" stroke-width="1.5" marker-end="url(#ah-d)"/>
+          <circle cx="40" cy="80" r="18" fill="#252a38" stroke="#5af0a0" stroke-width="2"/>
+          <text x="40" y="80" class="label-text">A</text>
+          <circle cx="100" cy="46" r="18" fill="#252a38" stroke="#5af0a0" stroke-width="2"/>
+          <text x="100" y="46" class="label-text">B</text>
+          <circle cx="100" cy="114" r="18" fill="#252a38" stroke="#5af0a0" stroke-width="2"/>
+          <text x="100" y="114" class="label-text">C</text>
+          <circle cx="170" cy="46" r="18" fill="#252a38" stroke="#5af0a0" stroke-width="2"/>
+          <text x="170" y="46" class="label-text">D</text>
+          <circle cx="170" cy="114" r="18" fill="#252a38" stroke="#5af0a0" stroke-width="2"/>
+          <text x="170" y="114" class="label-text">E</text>
+        </svg>
+      </div>
+      <ul class="diff-list">
+        <li><span class="icon">🟢</span> No cycles — strictly acyclic</li>
+        <li><span class="icon">🟢</span> All edges are directed</li>
+        <li><span class="icon">🟢</span> If A→B exists, B→A never exists</li>
+      </ul>
+    </div>
+
+  </div>
+  <div class="intro-btns">
+    <button class="big-btn" onclick="showView('dfs')">Topological Sort using DFS →</button>
+    <button class="big-btn bfs" onclick="showView('bfs')">Topological Sort using BFS →</button>
+  </div>
+</div>
+
+<!-- ============================== DFS VIEW ============================== -->
+<div class="view" id="view-dfs">
+  <div class="algo-layout">
+    <div class="graph-panel">
+      <h2>Graph — DFS Topological Sort</h2>
+      <svg id="svg-dfs" width="100%" height="340" viewBox="0 0 540 340"></svg>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#252a38;border:1.5px solid #5af0a0"></div>Unvisited</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(240,192,90,0.4)"></div>Visiting</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(160,90,240,0.4)"></div>In Stack</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(30,190,255,0.5);border:1.5px solid #1ebeff"></div>Done</div>
+      </div>
+      <div class="step-info" id="dfs-step">Press "Step" to begin DFS Topological Sort.</div>
+      <div class="controls">
+        <button class="ctrl-btn go" id="dfs-prev-btn" onclick="dfsPrev()">Prev Step</button>
+        <button class="ctrl-btn go" id="dfs-step-btn" onclick="dfsStep()">Step</button>
+        <button class="ctrl-btn" onclick="dfsAuto()">Auto</button>
+        <button class="ctrl-btn" onclick="initDFS()">Reset</button>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="info-box">
+        <h4>Stack (top → bottom)</h4>
+        <div class="sq-wrap" id="dfs-stack-display"></div>
+      </div>
+      <div class="info-box">
+        <h4>Visited [ node: 0/1 ]</h4>
+        <div class="cell-row" id="dfs-visited-display"></div>
+      </div>
+      <div class="info-box">
+        <h4>Terminal Output</h4>
+        <div class="terminal" id="dfs-terminal"><span class="prompt">$ </span><span id="dfs-out">waiting...</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== BFS VIEW ============================== -->
+<div class="view" id="view-bfs">
+  <div class="algo-layout">
+    <div class="graph-panel">
+      <h2>Graph — BFS Topological Sort (Kahn's Algorithm)</h2>
+      <svg id="svg-bfs" width="100%" height="340" viewBox="0 0 540 340"></svg>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#252a38;border:1.5px solid #5af0a0"></div>Unvisited</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(240,192,90,0.4)"></div>In Queue</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(30,190,255,0.5);border:1.5px solid #1ebeff"></div>Processed</div>
+      </div>
+      <div class="step-info" id="bfs-step">Press "Step" to begin BFS Topological Sort (Kahn's).</div>
+      <div class="controls">
+        <button class="ctrl-btn go" id="bfs-prev-btn" onclick="bfsPrev()">Prev Step</button>
+        <button class="ctrl-btn go" id="bfs-step-btn" onclick="bfsStep()">Step</button>
+        <button class="ctrl-btn" onclick="bfsAuto()">Auto</button>
+        <button class="ctrl-btn" onclick="initBFS()">Reset</button>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="info-box">
+        <h4>Queue (front → back)</h4>
+        <div class="sq-wrap" id="bfs-queue-display"></div>
+      </div>
+      <div class="info-box">
+        <h4>In-degree [ node: value ]</h4>
+        <div class="cell-row" id="bfs-indegree-display"></div>
+      </div>
+      <div class="info-box">
+        <h4>Visited [ node: 0/1 ]</h4>
+        <div class="cell-row" id="bfs-visited-display"></div>
+      </div>
+      <div class="info-box">
+        <h4>Terminal Output</h4>
+        <div class="terminal" id="bfs-terminal"><span class="prompt">$ </span><span id="bfs-out">waiting...</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================
+   GRAPH DEFINITION  — 7 nodes, 8 edges
+   Nodes: 0=A,1=B,2=C,3=D,4=E,5=F,6=G
+   Edges (directed): A→B, A→C, B→D, B→E, C→E, C→F, D→G, E→G
+=================================================== */
+const NODE_LABELS = ['A','B','C','D','E','F','G'];
+const EDGES = [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6]];
+
+// Node positions in 540×340 SVG
+const POSITIONS = [
+  {x:60,  y:170}, // A
+  {x:180, y:80 }, // B
+  {x:180, y:260}, // C
+  {x:310, y:80 }, // D
+  {x:310, y:200}, // E
+  {x:310, y:310}, // F  (no outgoing — sink)
+  {x:450, y:140}, // G
+];
+
+/* ============ SVG helpers ============ */
+function arrowId(svgId) { return `ah-${svgId}`; }
+
+function buildSVG(svgId) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+
+  // Marker
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+  marker.setAttribute('id', arrowId(svgId));
+  marker.setAttribute('markerWidth','9'); marker.setAttribute('markerHeight','9');
+  marker.setAttribute('refX','9'); marker.setAttribute('refY','3');
+  marker.setAttribute('orient','auto');
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d','M0,0 L0,6 L9,3 z');
+  path.setAttribute('fill','#3a4060');
+  marker.appendChild(path); defs.appendChild(marker); svg.appendChild(defs);
+
+  const R = 22;
+
+  // Edges
+  EDGES.forEach(([u,v]) => {
+    const p1 = POSITIONS[u], p2 = POSITIONS[v];
+    const dx = p2.x-p1.x, dy = p2.y-p1.y, d = Math.sqrt(dx*dx+dy*dy);
+    const nx = dx/d, ny = dy/d;
+    const x1 = p1.x + nx*R, y1 = p1.y + ny*R;
+    const x2 = p2.x - nx*(R+2), y2 = p2.y - ny*(R+2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke','#3a4060'); line.setAttribute('stroke-width','1.8');
+    line.setAttribute('marker-end',`url(#${arrowId(svgId)})`);
+    line.setAttribute('id',`edge-${svgId}-${u}-${v}`);
+    svg.appendChild(line);
+  });
+
+  // Nodes
+  POSITIONS.forEach((pos,i) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',pos.x); circle.setAttribute('cy',pos.y);
+    circle.setAttribute('r',R);
+    circle.setAttribute('fill','#252a38');
+    circle.setAttribute('stroke','#5af0a0');
+    circle.setAttribute('stroke-width','1.5');
+    circle.setAttribute('class','node-circle');
+    circle.setAttribute('id',`node-${svgId}-${i}`);
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',pos.x); text.setAttribute('y',pos.y);
+    text.setAttribute('class','label-text');
+    text.textContent = NODE_LABELS[i];
+    g.appendChild(circle); g.appendChild(text);
+    svg.appendChild(g);
+  });
+}
+
+function colorNode(svgId, i, state) {
+  const c = document.getElementById(`node-${svgId}-${i}`);
+  if(!c) return;
+  const colors = {
+    default: {fill:'#252a38', stroke:'#5af0a0'},
+    visiting: {fill:'rgba(240,192,90,0.35)', stroke:'#f0c05a'},
+    instack:  {fill:'rgba(160,90,240,0.35)', stroke:'#a05af0'},
+    visited:  {fill:'rgba(30,190,255,0.28)', stroke:'#1ebeff'},
+    inqueue:  {fill:'rgba(240,192,90,0.35)', stroke:'#f0c05a'},
+    processed:{fill:'rgba(30,190,255,0.28)', stroke:'#1ebeff'},
+  };
+  const s = colors[state] || colors.default;
+  c.setAttribute('fill', s.fill);
+  c.setAttribute('stroke', s.stroke);
+}
+
+function highlightEdge(svgId, u, v, on) {
+  const el = document.getElementById(`edge-${svgId}-${u}-${v}`);
+  if(!el) return;
+  el.setAttribute('stroke', on ? '#f0c05a' : '#3a4060');
+  el.setAttribute('stroke-width', on ? '2.5' : '1.8');
+}
+
+/* ============ ADJACENCY ============ */
+const ADJ = Array.from({length:7}, () => []);
+EDGES.forEach(([u,v]) => ADJ[u].push(v));
+
+/* ============ VIEW SWITCH ============ */
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`view-${id}`).classList.add('active');
+  event && event.target && event.target.classList && event.target.classList.add('active');
+  if(id === 'dfs') initDFS();
+  if(id === 'bfs') initBFS();
+}
+
+/* ================================================
+   DFS TOPOLOGICAL SORT
+================================================ */
+let dfsVisited, dfsStack, dfsOrder, dfsSteps, dfsPtr, dfsFinished, dfsAutoTimer;
+
+function initDFS() {
+  clearTimeout(dfsAutoTimer);
+  buildSVG('svg-dfs');
+  dfsVisited = new Array(7).fill(0);
+  dfsStack = [];
+  dfsOrder = [];
+  dfsSteps = [];
+  dfsFinished = false;
+  generateDFSSteps();
+  dfsPtr = 0;
+  initDFSRuntime();
+  document.getElementById('dfs-step-btn').disabled = false;
+  document.getElementById('dfs-prev-btn').disabled = true;
+  renderDFSState(-1, 'Press "Step" to begin DFS Topological Sort.');
+}
+
+// Build steps: each step = {type, node, neighbor?, message}
+function generateDFSSteps() {
+  const visited = new Array(7).fill(false);
+  const stack = [];
+  const steps = dfsSteps;
+
+  function dfs(u) {
+    steps.push({type:'visit', node:u, msg:`Visiting node ${NODE_LABELS[u]} — mark as visiting, explore neighbors.`});
+    visited[u] = true;
+    for(const v of ADJ[u]) {
+      if(!visited[v]) {
+        steps.push({type:'explore', node:u, neighbor:v, msg:`${NODE_LABELS[u]} → ${NODE_LABELS[v]}: neighbor unvisited, recurse.`});
+        dfs(v);
+      } else {
+        steps.push({type:'skip', node:u, neighbor:v, msg:`${NODE_LABELS[u]} → ${NODE_LABELS[v]}: already visited, skip.`});
+      }
+    }
+    stack.push(u);
+    steps.push({type:'push', node:u, stack:[...stack], msg:`All neighbors of ${NODE_LABELS[u]} done → push ${NODE_LABELS[u]} onto stack.`});
+  }
+
+  for(let i=0;i<7;i++) {
+    if(!visited[i]) {
+      steps.push({type:'start', node:i, msg:`Starting DFS from node ${NODE_LABELS[i]} (unvisited).`});
+      dfs(i);
+    }
+  }
+  steps.push({type:'done', stack:[...stack], msg:`DFS complete! Now pop stack for topological order.`});
+
+  // pop steps
+  const finalOrder = [];
+  while(stack.length) {
+    const n = stack.pop();
+    finalOrder.push(n);
+    steps.push({type:'pop', node:n, stack:[...stack], order:[...finalOrder], msg:`Pop ${NODE_LABELS[n]} → add to output.`});
+  }
+  steps.push({type:'finish', order:finalOrder, msg:`Topological order: ${finalOrder.map(n=>NODE_LABELS[n]).join(' → ')}`});
+}
+
+let _dfsVisitedState, _dfsStackState, _dfsOutputOrder, _dfsNodeState;
+
+function initDFSRuntime() {
+  _dfsVisitedState = new Array(7).fill(0);
+  _dfsStackState = [];
+  _dfsOutputOrder = [];
+  _dfsNodeState = new Array(7).fill('default');
+}
+
+function dfsStep() {
+  if(!_dfsVisitedState) initDFSRuntime();
+  if(dfsPtr >= dfsSteps.length) return;
+  const step = dfsSteps[dfsPtr++];
+  applyDFSStep(step);
+  document.getElementById('dfs-prev-btn').disabled = dfsPtr === 0;
+  if(dfsPtr >= dfsSteps.length) {
+    document.getElementById('dfs-step-btn').disabled = true;
+  }
+}
+
+function dfsPrev() {
+  if(dfsPtr === 0) return;
+  const target = dfsPtr - 1;
+  initDFS();
+  for(let i = 0; i < target; i++) dfsStep();
+  document.getElementById('dfs-step-btn').disabled = false;
+  document.getElementById('dfs-prev-btn').disabled = dfsPtr === 0;
+}
+
+function applyDFSStep(step) {
+  // Reset edge highlights
+  EDGES.forEach(([u,v]) => highlightEdge('svg-dfs',u,v,false));
+
+  if(step.type === 'start') {
+    _dfsNodeState[step.node] = 'visiting';
+  } else if(step.type === 'visit') {
+    _dfsVisitedState[step.node] = 1;
+    _dfsNodeState[step.node] = 'visiting';
+  } else if(step.type === 'explore') {
+    highlightEdge('svg-dfs', step.node, step.neighbor, true);
+  } else if(step.type === 'skip') {
+    highlightEdge('svg-dfs', step.node, step.neighbor, true);
+  } else if(step.type === 'push') {
+    _dfsStackState = [...step.stack];
+    _dfsNodeState[step.node] = 'instack';
+  } else if(step.type === 'done') {
+    _dfsStackState = [...step.stack];
+  } else if(step.type === 'pop') {
+    _dfsStackState = [...step.stack];
+    _dfsOutputOrder = [...step.order];
+    _dfsNodeState[step.node] = 'visited';
+  } else if(step.type === 'finish') {
+    _dfsOutputOrder = [...step.order];
+  }
+
+  // Apply node colors
+  for(let i=0;i<7;i++) colorNode('svg-dfs', i, _dfsNodeState[i]);
+
+  renderDFSState(step.type, step.msg);
+}
+
+function renderDFSState(type, msg) {
+  // stack display
+  const sd = document.getElementById('dfs-stack-display');
+  sd.innerHTML = '';
+  if(_dfsStackState) {
+    [..._dfsStackState].reverse().forEach(n => {
+      const div = document.createElement('div');
+      div.className = 'sq-item';
+      div.textContent = NODE_LABELS[n];
+      sd.appendChild(div);
+    });
+  }
+
+  // visited
+  const vd = document.getElementById('dfs-visited-display');
+  vd.innerHTML = '';
+  NODE_LABELS.forEach((lbl,i) => {
+    const d = document.createElement('div');
+    d.className = 'cell' + (_dfsVisitedState && _dfsVisitedState[i] ? ' visited' : '');
+    d.textContent = `${lbl}:${_dfsVisitedState ? _dfsVisitedState[i] : 0}`;
+    vd.appendChild(d);
+  });
+
+  // terminal
+  if(_dfsOutputOrder && _dfsOutputOrder.length > 0) {
+    document.getElementById('dfs-out').textContent = _dfsOutputOrder.map(n=>NODE_LABELS[n]).join(' → ');
+  }
+
+  document.getElementById('dfs-step').textContent = msg || '';
+}
+
+function dfsAuto() {
+  clearTimeout(dfsAutoTimer);
+  if(!_dfsVisitedState) initDFSRuntime();
+  function loop() {
+    if(dfsPtr < dfsSteps.length) {
+      dfsStep();
+      dfsAutoTimer = setTimeout(loop, 900);
+    }
+  }
+  loop();
+}
+
+/* ================================================
+   BFS TOPOLOGICAL SORT (KAHN'S)
+================================================ */
+let bfsSteps, bfsPtr, _bfsQueue, _bfsIndegree, _bfsVisited, _bfsOutput, _bfsNodeState, bfsAutoTimer;
+
+function initBFS() {
+  clearTimeout(bfsAutoTimer);
+  buildSVG('svg-bfs');
+  bfsSteps = [];
+  generateBFSSteps();
+  bfsPtr = 0;
+  _bfsQueue = [];
+  _bfsVisited = new Array(7).fill(0);
+  _bfsOutput = [];
+  _bfsNodeState = new Array(7).fill('default');
+
+  // Compute initial indegrees
+  const deg = new Array(7).fill(0);
+  EDGES.forEach(([,v]) => deg[v]++);
+  _bfsIndegree = [...deg];
+
+  document.getElementById('bfs-step-btn').disabled = false;
+  document.getElementById('bfs-prev-btn').disabled = true;
+  renderBFSState('Press "Step" to begin Kahn\'s BFS Topological Sort.');
+}
+
+function generateBFSSteps() {
+  const steps = bfsSteps;
+  const indeg = new Array(7).fill(0);
+  EDGES.forEach(([,v]) => indeg[v]++);
+
+  steps.push({type:'init', indeg:[...indeg], msg:'Compute in-degrees for all nodes.'});
+
+  const queue = [];
+  for(let i=0;i<7;i++) {
+    if(indeg[i]===0) {
+      queue.push(i);
+      steps.push({type:'enqueue', node:i, queue:[...queue], msg:`Node ${NODE_LABELS[i]} has in-degree 0 → enqueue.`});
+    }
+  }
+
+  const output = [];
+  const visited = new Array(7).fill(0);
+
+  while(queue.length) {
+    const u = queue.shift();
+    visited[u] = 1;
+    output.push(u);
+    steps.push({type:'dequeue', node:u, queue:[...queue], output:[...output], visited:[...visited], msg:`Dequeue ${NODE_LABELS[u]} → add to output.`});
+
+    for(const v of ADJ[u]) {
+      indeg[v]--;
+      steps.push({type:'decrement', node:u, neighbor:v, indeg:[...indeg], msg:`Decrement in-degree of ${NODE_LABELS[v]}: ${indeg[v]+1} → ${indeg[v]}.`});
+      if(indeg[v]===0) {
+        queue.push(v);
+        steps.push({type:'enqueue', node:v, queue:[...queue], msg:`${NODE_LABELS[v]} in-degree = 0 → enqueue.`});
+      }
+    }
+  }
+
+  steps.push({type:'finish', output:[...output], msg:`BFS complete! Topological order: ${output.map(n=>NODE_LABELS[n]).join(' → ')}`});
+}
+
+function bfsStep() {
+  if(bfsPtr >= bfsSteps.length) return;
+  const step = bfsSteps[bfsPtr++];
+  applyBFSStep(step);
+  document.getElementById('bfs-prev-btn').disabled = bfsPtr === 0;
+  if(bfsPtr >= bfsSteps.length) document.getElementById('bfs-step-btn').disabled = true;
+}
+
+function bfsPrev() {
+  if(bfsPtr === 0) return;
+  const target = bfsPtr - 1;
+  initBFS();
+  for(let i = 0; i < target; i++) bfsStep();
+  document.getElementById('bfs-step-btn').disabled = false;
+  document.getElementById('bfs-prev-btn').disabled = bfsPtr === 0;
+}
+
+function applyBFSStep(step) {
+  EDGES.forEach(([u,v]) => highlightEdge('svg-bfs',u,v,false));
+
+  if(step.type === 'init') {
+    _bfsIndegree = [...step.indeg];
+  } else if(step.type === 'enqueue') {
+    _bfsQueue = [...step.queue];
+    _bfsNodeState[step.node] = 'inqueue';
+  } else if(step.type === 'dequeue') {
+    _bfsQueue = [...step.queue];
+    _bfsVisited = [...step.visited];
+    _bfsOutput = [...step.output];
+    _bfsNodeState[step.node] = 'processed';
+  } else if(step.type === 'decrement') {
+    _bfsIndegree = [...step.indeg];
+    highlightEdge('svg-bfs', step.node, step.neighbor, true);
+  } else if(step.type === 'finish') {
+    _bfsOutput = [...step.output];
+  }
+
+  for(let i=0;i<7;i++) colorNode('svg-bfs', i, _bfsNodeState[i]);
+  renderBFSState(step.msg);
+}
+
+function renderBFSState(msg) {
+  // queue
+  const qd = document.getElementById('bfs-queue-display');
+  qd.innerHTML = '';
+  (_bfsQueue||[]).forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'sq-item';
+    div.textContent = NODE_LABELS[n];
+    qd.appendChild(div);
+  });
+
+  // indegree
+  const id = document.getElementById('bfs-indegree-display');
+  id.innerHTML = '';
+  NODE_LABELS.forEach((lbl,i) => {
+    const d = document.createElement('div');
+    d.className = 'cell' + (_bfsIndegree && _bfsIndegree[i]===0 ? ' visited' : '');
+    d.textContent = `${lbl}:${_bfsIndegree ? _bfsIndegree[i] : '?'}`;
+    id.appendChild(d);
+  });
+
+  // visited
+  const vd = document.getElementById('bfs-visited-display');
+  vd.innerHTML = '';
+  NODE_LABELS.forEach((lbl,i) => {
+    const d = document.createElement('div');
+    d.className = 'cell' + (_bfsVisited && _bfsVisited[i] ? ' visited' : '');
+    d.textContent = `${lbl}:${_bfsVisited ? _bfsVisited[i] : 0}`;
+    vd.appendChild(d);
+  });
+
+  // terminal
+  if(_bfsOutput && _bfsOutput.length > 0) {
+    document.getElementById('bfs-out').textContent = _bfsOutput.map(n=>NODE_LABELS[n]).join(' → ');
+  }
+
+  document.getElementById('bfs-step').textContent = msg || '';
+}
+
+function bfsAuto() {
+  clearTimeout(bfsAutoTimer);
+  function loop() {
+    if(bfsPtr < bfsSteps.length) {
+      bfsStep();
+      bfsAutoTimer = setTimeout(loop, 900);
+    }
+  }
+  loop();
+}
+
+// Init on load
+window.onload = () => {
+  buildSVG('svg-dfs');
+  buildSVG('svg-bfs');
+};
+</script>
+</body>
+</html>

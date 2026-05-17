@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVL Tree Visualizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --border: #252836;
+    --accent: #64ffda;
+    --accent2: #ff6b6b;
+    --accent3: #ffd166;
+    --accent4: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --node-fill: #1e2333;
+    --node-stroke: #64ffda;
+    --edge: #334155;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-right: auto;
+  }
+
+  .tab-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 7px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tab-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+  .page { display: none; flex: 1; overflow: hidden; }
+  .page.active { display: flex; flex-direction: column; }
+
+  /* ── INTRO ── */
+  #page-intro { padding: 14px 24px; gap: 10px; }
+
+  .intro-desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    flex-shrink: 0;
+  }
+  .intro-desc span { color: var(--accent); font-weight: 700; }
+
+  .rotations-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .rot-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .rot-card h3 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .rot-card h3.ll { color: var(--accent); }
+  .rot-card h3.lr { color: var(--accent3); }
+  .rot-card h3.rl { color: var(--accent2); }
+  .rot-card h3.rr { color: var(--accent4); }
+
+  .rot-svg-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rot-svg-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+  .rot-btns { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .small-btn {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .small-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .small-btn.action { border-color: var(--accent); color: var(--accent); }
+  .small-btn.action:hover { background: var(--accent); color: var(--bg); }
+
+  /* ── INSERTION / DELETION ── */
+  .ins-del-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0;
+    min-height: 0;
+    padding: 14px 24px;
+    gap: 14px;
+  }
+
+  .sidebar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .sidebar h3 {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .step-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+
+  .step-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 5px 8px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-item.done { color: var(--text); border-color: var(--border); }
+  .step-item.current { color: var(--accent); border-color: var(--accent); background: rgba(100,255,218,.07); }
+  .step-item .badge {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(100,255,218,.15);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .step-item.rot .badge { background: rgba(255,107,107,.15); color: var(--accent2); }
+
+  .ctrl-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .ctrl-btn:hover { background: var(--accent); color: var(--bg); }
+  .ctrl-btn:disabled { border-color: var(--border); color: var(--muted); cursor: not-allowed; }
+  .ctrl-btn:disabled:hover { background: transparent; color: var(--muted); }
+
+  .custom-box {
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .custom-box label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .custom-box input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+  }
+
+  .tree-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  #tree-canvas-ins, #tree-canvas-del {
+    width: 100%;
+    height: 100%;
+  }
+
+  .status-bar {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    background: rgba(13,15,20,.85);
+    border: 1px solid var(--accent);
+    padding: 4px 14px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .3s;
+    white-space: nowrap;
+  }
+  .status-bar.show { opacity: 1; }
+
+  /* SVG node styles (injected inline via JS) */
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html" class="active">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<header>
+  <h1>AVL Tree</h1>
+  <button class="tab-btn active" onclick="showPage('intro',this)">Intro</button>
+  <button class="tab-btn" onclick="showPage('ins',this)">Insertion in AVL</button>
+  <button class="tab-btn" onclick="showPage('del',this)">Deletion in AVL</button>
+</header>
+
+<!-- ════════════════ INTRO PAGE ════════════════ -->
+<div id="page-intro" class="page active">
+  <p class="intro-desc">
+    An AVL tree is a <span>self-balancing BST</span> where the difference between heights of left and right subtrees
+    for any node cannot be more than <span>one</span>. When balance is violated, a <span>rotation</span> restores it.
+  </p>
+  <div class="rotations-grid">
+    <!-- LL -->
+    <div class="rot-card">
+      <h3 class="ll">LL Rotation</h3>
+      <div class="rot-svg-wrap"><svg id="svg-ll" viewBox="0 0 160 180"></svg></div>
+      <div class="rot-btns">
+        <button class="small-btn" onclick="resetRot('ll')">Reset</button>
+        <button class="small-btn action" onclick="animateRot('ll')">Balance</button>
+      </div>
+    </div>
+    <!-- LR -->
+    <div class="rot-card">
+      <h3 class="lr">LR Rotation</h3>
+      <div class="rot-svg-wrap"><svg id="svg-lr" viewBox="0 0 160 180"></svg></div>
+      <div class="rot-btns">
+        <button class="small-btn" onclick="resetRot('lr')">Reset</button>
+        <button class="small-btn action" onclick="animateRot('lr')">Balance</button>
+      </div>
+    </div>
+    <!-- RL -->
+    <div class="rot-card">
+      <h3 class="rl">RL Rotation</h3>
+      <div class="rot-svg-wrap"><svg id="svg-rl" viewBox="0 0 160 180"></svg></div>
+      <div class="rot-btns">
+        <button class="small-btn" onclick="resetRot('rl')">Reset</button>
+        <button class="small-btn action" onclick="animateRot('rl')">Balance</button>
+      </div>
+    </div>
+    <!-- RR -->
+    <div class="rot-card">
+      <h3 class="rr">RR Rotation</h3>
+      <div class="rot-svg-wrap"><svg id="svg-rr" viewBox="0 0 160 180"></svg></div>
+      <div class="rot-btns">
+        <button class="small-btn" onclick="resetRot('rr')">Reset</button>
+        <button class="small-btn action" onclick="animateRot('rr')">Balance</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ INSERTION PAGE ════════════════ -->
+<div id="page-ins" class="page">
+  <div class="ins-del-layout">
+    <div class="sidebar">
+      <h3>Insert Sequence</h3>
+      <ul class="step-list" id="ins-steps"></ul>
+      <button class="ctrl-btn" id="ins-prev-btn" onclick="insPrev()">◀ Prev Step</button>
+      <button class="ctrl-btn" id="ins-next-btn" onclick="insNext()">Next Step ▶</button>
+      <button class="ctrl-btn" onclick="insReset()" style="border-color:var(--accent2);color:var(--accent2)">Reset</button>
+      <div class="custom-box">
+        <label for="ins-custom">Custom Insertion</label>
+        <input id="ins-custom" type="text" placeholder="10, 20, 30">
+        <button class="ctrl-btn" onclick="applyCustomInsert()">Use Sequence</button>
+      </div>
+    </div>
+    <div class="tree-area">
+      <svg id="tree-canvas-ins" viewBox="0 0 700 440" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="status-bar" id="ins-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ DELETION PAGE ════════════════ -->
+<div id="page-del" class="page">
+  <div class="ins-del-layout">
+    <div class="sidebar">
+      <h3>Delete Sequence</h3>
+      <ul class="step-list" id="del-steps"></ul>
+      <button class="ctrl-btn" id="del-prev-btn" onclick="delPrev()">◀ Prev Step</button>
+      <button class="ctrl-btn" id="del-next-btn" onclick="delNext()">Next Step ▶</button>
+      <button class="ctrl-btn" onclick="delReset()" style="border-color:var(--accent2);color:var(--accent2)">Reset</button>
+      <div class="custom-box">
+        <label for="del-custom">Custom Deletion</label>
+        <input id="del-custom" type="text" placeholder="30, 50, 35">
+        <button class="ctrl-btn" onclick="applyCustomDelete()">Use Sequence</button>
+      </div>
+    </div>
+    <div class="tree-area">
+      <svg id="tree-canvas-del" viewBox="0 0 700 440" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="status-bar" id="del-status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function easeInOut(t) { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
+
+function animate(duration, cb, done) {
+  const start = performance.now();
+  function frame(now) {
+    let t = Math.min((now - start) / duration, 1);
+    cb(easeInOut(t));
+    if (t < 1) requestAnimationFrame(frame);
+    else if (done) done();
+  }
+  requestAnimationFrame(frame);
+}
+
+// ═══════════════════════════════════════════════════
+//  AVL DATA STRUCTURE
+// ═══════════════════════════════════════════════════
+class AVLNode {
+  constructor(val) { this.val = val; this.left = null; this.right = null; this.h = 1; }
+}
+
+function height(n) { return n ? n.h : 0; }
+function bf(n) { return n ? height(n.left) - height(n.right) : 0; }
+function upH(n) { if (n) n.h = 1 + Math.max(height(n.left), height(n.right)); }
+
+function rotR(y) {
+  let x = y.left, T2 = x.right;
+  x.right = y; y.left = T2;
+  upH(y); upH(x); return x;
+}
+function rotL(x) {
+  let y = x.right, T2 = y.left;
+  y.left = x; x.right = T2;
+  upH(x); upH(y); return y;
+}
+
+function insertAVL(root, val) {
+  if (!root) return { node: new AVLNode(val), rotType: null };
+  let rotType = null;
+  if (val < root.val) {
+    let r = insertAVL(root.left, val);
+    root.left = r.node; rotType = r.rotType;
+  } else if (val > root.val) {
+    let r = insertAVL(root.right, val);
+    root.right = r.node; rotType = r.rotType;
+  } else return { node: root, rotType: null };
+  upH(root);
+  let b = bf(root);
+  if (b > 1 && val < root.left.val) { rotType = 'LL'; return { node: rotR(root), rotType }; }
+  if (b < -1 && val > root.right.val) { rotType = 'RR'; return { node: rotL(root), rotType }; }
+  if (b > 1 && val > root.left.val) { root.left = rotL(root.left); rotType = 'LR'; return { node: rotR(root), rotType }; }
+  if (b < -1 && val < root.right.val) { root.right = rotR(root.right); rotType = 'RL'; return { node: rotL(root), rotType }; }
+  return { node: root, rotType };
+}
+
+function minNode(n) { while (n.left) n = n.left; return n; }
+
+function deleteAVL(root, val) {
+  if (!root) return { node: null, rotType: null };
+  let rotType = null;
+  if (val < root.val) {
+    let r = deleteAVL(root.left, val); root.left = r.node; rotType = r.rotType;
+  } else if (val > root.val) {
+    let r = deleteAVL(root.right, val); root.right = r.node; rotType = r.rotType;
+  } else {
+    if (!root.left || !root.right) {
+      root = root.left || root.right;
+    } else {
+      let succ = minNode(root.right);
+      root.val = succ.val;
+      let r = deleteAVL(root.right, succ.val); root.right = r.node;
+    }
+  }
+  if (!root) return { node: null, rotType };
+  upH(root);
+  let b = bf(root);
+  if (b > 1 && bf(root.left) >= 0) { rotType = 'LL'; return { node: rotR(root), rotType }; }
+  if (b > 1 && bf(root.left) < 0) { root.left = rotL(root.left); rotType = 'LR'; return { node: rotR(root), rotType }; }
+  if (b < -1 && bf(root.right) <= 0) { rotType = 'RR'; return { node: rotL(root), rotType }; }
+  if (b < -1 && bf(root.right) > 0) { root.right = rotR(root.right); rotType = 'RL'; return { node: rotL(root), rotType }; }
+  return { node: root, rotType };
+}
+
+// ═══════════════════════════════════════════════════
+//  TREE LAYOUT — kept for legacy reference (unused)
+// ═══════════════════════════════════════════════════
+
+// Snapshot a positions Map into a plain val→{x,y,bfVal} map (safe to keep after tree mutation)
+function snapshotByVal(posMap) {
+  const snap = new Map();
+  for (const [node, pos] of posMap) {
+    snap.set(node.val, { x: pos.x, y: pos.y, bfVal: bf(node) });
+  }
+  return snap;
+}
+
+// Build a val→{x,y,bfVal,leftVal,rightVal} snapshot directly from a tree root
+function snapshotTree(root) {
+  const snap = new Map();
+  function dfs(node, depth, lo, hi) {
+    if (!node) return;
+    const x = (lo + hi) / 2;
+    const y = 36 + depth * 68;
+    snap.set(node.val, {
+      x, y,
+      bfVal: bf(node),
+      leftVal:  node.left  ? node.left.val  : null,
+      rightVal: node.right ? node.right.val : null,
+    });
+    dfs(node.left,  depth + 1, lo, (lo + hi) / 2);
+    dfs(node.right, depth + 1, (lo + hi) / 2, hi);
+  }
+  dfs(root, 0, 0, 700);
+  return snap;
+}
+
+// Animated morph between two value-keyed snapshots.
+// oldSnap / newSnap: Map<val, {x,y,bfVal,leftVal,rightVal}>
+function morphTree(svgEl, oldSnap, newSnap, duration, highlight, done) {
+  svgEl.innerHTML = '';
+
+  const allVals = new Set([...oldSnap.keys(), ...newSnap.keys()]);
+
+  // defs
+  const defs = el('defs');
+  const glow = el('filter', { id: 'glow2' });
+  const fe = el('feGaussianBlur', { stdDeviation: '3', result: 'blur' });
+  const feM = el('feMerge');
+  feM.appendChild(el('feMergeNode', { in: 'blur' }));
+  feM.appendChild(el('feMergeNode', { in: 'SourceGraphic' }));
+  glow.appendChild(fe); glow.appendChild(feM);
+  defs.appendChild(glow);
+  svgEl.appendChild(defs);
+
+  const edgeGroup = el('g'); svgEl.appendChild(edgeGroup);
+  const nodeGroup = el('g'); svgEl.appendChild(nodeGroup);
+
+  // node DOM elements keyed by val
+  const nodeEls = new Map();
+  const bfEls   = new Map();
+
+  for (const val of allVals) {
+    const os = oldSnap.get(val);
+    const ns = newSnap.get(val);
+    const startX = os ? os.x : ns.x;
+    const startY = os ? os.y : ns.y;
+    const isHL = highlight && highlight.has(val);
+
+    const g = el('g', { transform: `translate(${startX},${startY})` });
+    const circle = el('circle', { r: 20, fill: '#1e2333',
+      stroke: isHL ? '#ff6b6b' : '#64ffda',
+      'stroke-width': isHL ? '2' : '1.5' });
+    const txt = el('text', {
+      'text-anchor': 'middle', 'dominant-baseline': 'central',
+      fill: isHL ? '#ff6b6b' : '#e2e8f0',
+      'font-family': 'JetBrains Mono, monospace', 'font-size': '11', 'font-weight': '700'
+    });
+    txt.textContent = val;
+    const bfTxt = el('text', { x: 24, y: -16, fill: '#64748b',
+      'font-family': 'JetBrains Mono, monospace', 'font-size': '8' });
+    bfTxt.textContent = os ? os.bfVal : '';
+
+    g.appendChild(circle); g.appendChild(txt); g.appendChild(bfTxt);
+    if (!os) g.style.opacity = '0';
+    nodeGroup.appendChild(g);
+    nodeEls.set(val, g);
+    bfEls.set(val, bfTxt);
+  }
+
+  // edges from new snapshot
+  const lineEls = [];
+  for (const [val, ns] of newSnap) {
+    for (const childVal of [ns.leftVal, ns.rightVal]) {
+      if (childVal === null) continue;
+      const line = el('line', { stroke: '#334155', 'stroke-width': '1.5' });
+      edgeGroup.appendChild(line);
+      lineEls.push({ line, parentVal: val, childVal });
+    }
+  }
+
+  animate(duration, t => {
+    for (const val of allVals) {
+      const os = oldSnap.get(val);
+      const ns = newSnap.get(val);
+      const gEl = nodeEls.get(val);
+      if (!ns) {
+        // node removed — fade out from old position
+        gEl.style.opacity = String(1 - t);
+        gEl.setAttribute('transform', `translate(${os.x},${os.y})`);
+        continue;
+      }
+      const sx = os ? os.x : ns.x;
+      const sy = os ? os.y : ns.y;
+      gEl.setAttribute('transform', `translate(${lerp(sx, ns.x, t)},${lerp(sy, ns.y, t)})`);
+      if (!os) gEl.style.opacity = String(t);
+      // interpolate BF label: show old until halfway, then snap to new
+      bfEls.get(val).textContent = t < 0.5 ? (os ? os.bfVal : '') : ns.bfVal;
+    }
+    for (const { line, parentVal, childVal } of lineEls) {
+      const ps = newSnap.get(parentVal);
+      const cs = newSnap.get(childVal);
+      if (!ps || !cs) continue;
+      const posOld = oldSnap.get(parentVal);
+      const cosOld = oldSnap.get(childVal);
+      line.setAttribute('x1', lerp(posOld ? posOld.x : ps.x, ps.x, t));
+      line.setAttribute('y1', lerp(posOld ? posOld.y : ps.y, ps.y, t));
+      line.setAttribute('x2', lerp(cosOld ? cosOld.x : cs.x, cs.x, t));
+      line.setAttribute('y2', lerp(cosOld ? cosOld.y : cs.y, cs.y, t));
+    }
+  }, () => {
+    // Render final static state from newSnap
+    renderTreeFromSnap(svgEl, newSnap, highlight);
+    if (done) done();
+  });
+}
+
+// Render a static tree from a value-keyed snapshot (no AVL node objects needed)
+function renderTreeFromSnap(svgEl, snap, highlight) {
+  svgEl.innerHTML = '';
+  const defs = el('defs');
+  const glow = el('filter', { id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+  const fe = el('feGaussianBlur', { stdDeviation: '3', result: 'blur' });
+  const feM = el('feMerge');
+  feM.appendChild(el('feMergeNode', { in: 'blur' }));
+  feM.appendChild(el('feMergeNode', { in: 'SourceGraphic' }));
+  glow.appendChild(fe); glow.appendChild(feM);
+  defs.appendChild(glow);
+  svgEl.appendChild(defs);
+
+  // edges
+  for (const [val, s] of snap) {
+    for (const childVal of [s.leftVal, s.rightVal]) {
+      if (childVal === null) continue;
+      const cs = snap.get(childVal);
+      if (!cs) continue;
+      svgEl.appendChild(el('line', {
+        x1: s.x, y1: s.y, x2: cs.x, y2: cs.y,
+        stroke: '#334155', 'stroke-width': '1.5'
+      }));
+    }
+  }
+  // nodes
+  for (const [val, s] of snap) {
+    const isHL = highlight && highlight.has(val);
+    const g = el('g', { transform: `translate(${s.x},${s.y})` });
+    if (isHL) g.appendChild(el('circle', { r: 23, fill: 'rgba(255,107,107,0.15)', stroke: '#ff6b6b', 'stroke-width': '1' }));
+    g.appendChild(el('circle', { r: 20, fill: '#1e2333',
+      stroke: isHL ? '#ff6b6b' : '#64ffda',
+      'stroke-width': isHL ? '2' : '1.5',
+      filter: isHL ? 'url(#glow)' : '' }));
+    const txt = el('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      fill: isHL ? '#ff6b6b' : '#e2e8f0',
+      'font-family': 'JetBrains Mono, monospace', 'font-size': '11', 'font-weight': '700' });
+    txt.textContent = val;
+    const bfTxt = el('text', { x: 24, y: -16,
+      fill: Math.abs(s.bfVal) > 1 ? '#ff6b6b' : '#64748b',
+      'font-family': 'JetBrains Mono, monospace', 'font-size': '8' });
+    bfTxt.textContent = s.bfVal;
+    g.appendChild(txt); g.appendChild(bfTxt);
+    svgEl.appendChild(g);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  INTRO — ROTATION DEMOS
+// ═══════════════════════════════════════════════════
+const rotDefs = {
+  ll: {
+    before: [
+      { val: 30, x: 80, y: 30 },
+      { val: 20, x: 40, y: 90 },
+      { val: 10, x: 10, y: 150 },
+    ],
+    after: [
+      { val: 20, x: 80, y: 30 },
+      { val: 10, x: 40, y: 90 },
+      { val: 30, x: 120, y: 90 },
+    ],
+    edges_before: [[0,1],[1,2]],
+    edges_after: [[0,1],[0,2]],
+    color: '#64ffda'
+  },
+  lr: {
+    before: [
+      { val: 30, x: 80, y: 30 },
+      { val: 10, x: 30, y: 90 },
+      { val: 20, x: 110, y: 150 },
+    ],
+    after: [
+      { val: 20, x: 80, y: 30 },
+      { val: 10, x: 30, y: 90 },
+      { val: 30, x: 130, y: 90 },
+    ],
+    edges_before: [[0,1],[1,2]],
+    edges_after: [[0,1],[0,2]],
+    color: '#ffd166'
+  },
+  rl: {
+    before: [
+      { val: 10, x: 80, y: 30 },
+      { val: 30, x: 130, y: 90 },
+      { val: 20, x: 50, y: 150 },
+    ],
+    after: [
+      { val: 20, x: 80, y: 30 },
+      { val: 10, x: 30, y: 90 },
+      { val: 30, x: 130, y: 90 },
+    ],
+    edges_before: [[0,1],[1,2]],
+    edges_after: [[0,1],[0,2]],
+    color: '#ff6b6b'
+  },
+  rr: {
+    before: [
+      { val: 10, x: 80, y: 30 },
+      { val: 20, x: 120, y: 90 },
+      { val: 30, x: 150, y: 150 },
+    ],
+    after: [
+      { val: 20, x: 80, y: 30 },
+      { val: 10, x: 40, y: 90 },
+      { val: 30, x: 120, y: 90 },
+    ],
+    edges_before: [[0,1],[1,2]],
+    edges_after: [[0,1],[0,2]],
+    color: '#a78bfa'
+  }
+};
+
+const rotState = { ll: false, lr: false, rl: false, rr: false };
+
+function drawRotSVG(id, useBefore) {
+  const svg = document.getElementById('svg-' + id);
+  const def = rotDefs[id];
+  const nodes = useBefore ? def.before : def.after;
+  const edges = useBefore ? def.edges_before : def.edges_after;
+  svg.innerHTML = '';
+
+  // labels
+  const labels = {
+    ll: ['z (unbalanced)', 'y', 'x'],
+    lr: ['z (unbalanced)', 'x', 'y'],
+    rl: ['z (unbalanced)', 'x', 'y'],
+    rr: ['z (unbalanced)', 'y', 'x'],
+  };
+  const afterLabels = {
+    ll: ['y', 'x', 'z'],
+    lr: ['y', 'x', 'z'],
+    rl: ['y', 'z', 'x'],
+    rr: ['y', 'z', 'x'],
+  };
+  const lbs = useBefore ? labels[id] : afterLabels[id];
+
+  for (const [a, b] of edges) {
+    const na = nodes[a], nb = nodes[b];
+    const line = el('line', { x1: na.x, y1: na.y, x2: nb.x, y2: nb.y, stroke: '#334155', 'stroke-width': '1.5' });
+    svg.appendChild(line);
+  }
+  nodes.forEach((n, i) => {
+    const g = el('g', { transform: `translate(${n.x},${n.y})` });
+    const circle = el('circle', { r: '18', fill: '#1e2333', stroke: def.color, 'stroke-width': '1.5' });
+    const txt = el('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#e2e8f0', 'font-family': 'JetBrains Mono, monospace', 'font-size': '11', 'font-weight': '700' });
+    txt.textContent = n.val;
+    const lbl = el('text', { 'text-anchor': 'middle', y: '30', fill: def.color, 'font-family': 'JetBrains Mono, monospace', 'font-size': '8' });
+    lbl.textContent = lbs[i];
+    g.appendChild(circle); g.appendChild(txt); g.appendChild(lbl);
+    svg.appendChild(g);
+  });
+}
+
+function resetRot(id) {
+  rotState[id] = false;
+  drawRotSVG(id, true);
+}
+
+function animateRot(id) {
+  if (rotState[id]) return;
+  rotState[id] = true;
+  const def = rotDefs[id];
+  const svg = document.getElementById('svg-' + id);
+
+  // Build val→{beforePos, afterPos} map so each circle tracks its own value
+  const beforeByVal = new Map(def.before.map(n => [n.val, { x: n.x, y: n.y }]));
+  const afterByVal  = new Map(def.after.map(n  => [n.val, { x: n.x, y: n.y }]));
+
+  const dur = 750;
+  const start = performance.now();
+
+  function frame(now) {
+    const t  = Math.min((now - start) / dur, 1);
+    const et = easeInOut(t);
+    svg.innerHTML = '';
+
+    // current positions for every val
+    const cur = new Map();
+    for (const val of beforeByVal.keys()) {
+      const b = beforeByVal.get(val);
+      const a = afterByVal.get(val);
+      cur.set(val, { x: lerp(b.x, a.x, et), y: lerp(b.y, a.y, et) });
+    }
+
+    // fade old edges out, new edges in
+    for (const [a, b] of def.edges_before) {
+      const na = def.before[a], nb = def.before[b];
+      const ca = cur.get(na.val),  cb = cur.get(nb.val);
+      const line = el('line', { x1: ca.x, y1: ca.y, x2: cb.x, y2: cb.y,
+        stroke: '#334155', 'stroke-width': '1.5', opacity: String(1 - et) });
+      svg.appendChild(line);
+    }
+    for (const [a, b] of def.edges_after) {
+      const na = def.after[a], nb = def.after[b];
+      const ca = cur.get(na.val), cb = cur.get(nb.val);
+      const line = el('line', { x1: ca.x, y1: ca.y, x2: cb.x, y2: cb.y,
+        stroke: '#334155', 'stroke-width': '1.5', opacity: String(et) });
+      svg.appendChild(line);
+    }
+
+    // draw every node at its interpolated position with its own value
+    for (const [val, pos] of cur) {
+      const g = el('g', { transform: `translate(${pos.x},${pos.y})` });
+      g.appendChild(el('circle', { r: '18', fill: '#1e2333', stroke: def.color, 'stroke-width': '1.5' }));
+      const txt = el('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central',
+        fill: '#e2e8f0', 'font-family': 'JetBrains Mono, monospace', 'font-size': '11', 'font-weight': '700' });
+      txt.textContent = val;
+      g.appendChild(txt);
+      svg.appendChild(g);
+    }
+
+    if (t < 1) requestAnimationFrame(frame);
+    else drawRotSVG(id, false);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+// init intro SVGs
+['ll','lr','rl','rr'].forEach(id => drawRotSVG(id, true));
+
+// ═══════════════════════════════════════════════════
+//  INSERTION PAGE
+// ═══════════════════════════════════════════════════
+// Sequence: 10,20,30 → RR; 5,1 → LL; 40,35 → RL; 8,9 → LR
+let INS_SEQUENCE = [10, 20, 30, 5, 1, 40, 35, 8, 9, 50];
+let insTree = null;
+let insStep = 0;
+let insAnimating = false;
+let insCurrentSnap = new Map();
+
+let INS_STEP_LABELS = INS_SEQUENCE.map(v => ({ val: v, rot: null }));
+
+function parseNumberList(raw) {
+  const vals = raw.split(/[\s,]+/).map(v => parseInt(v, 10)).filter(Number.isFinite);
+  return [...new Set(vals)];
+}
+
+function resetInsLabels() {
+  INS_STEP_LABELS = INS_SEQUENCE.map(v => ({ val: v, rot: null }));
+}
+
+function insReset() {
+  insTree = null; insStep = 0; insCurrentSnap = new Map();
+  resetInsLabels();
+  document.getElementById('tree-canvas-ins').innerHTML = '';
+  buildInsStepList();
+  document.getElementById('ins-next-btn').disabled = false;
+  document.getElementById('ins-prev-btn').disabled = true;
+  showStatus('ins-status', '');
+}
+
+function buildInsStepList() {
+  const ul = document.getElementById('ins-steps');
+  ul.innerHTML = '';
+  INS_SEQUENCE.forEach((v, i) => {
+    const li = document.createElement('li');
+    li.className = 'step-item' + (i < insStep ? ' done' : '') + (i === insStep ? ' current' : '');
+    li.id = 'ins-step-' + i;
+    li.innerHTML = `<span>Insert ${v}</span><span class="badge">${INS_STEP_LABELS[i].rot || ''}</span>`;
+    if (INS_STEP_LABELS[i].rot) li.classList.add('rot');
+    ul.appendChild(li);
+  });
+}
+
+function rebuildInsTo(targetStep) {
+  insTree = null;
+  resetInsLabels();
+  for (let i = 0; i < targetStep; i++) {
+    const r = insertAVL(insTree, INS_SEQUENCE[i]);
+    insTree = r.node;
+    INS_STEP_LABELS[i].rot = r.rotType || '';
+  }
+  insStep = targetStep;
+  insCurrentSnap = insTree ? snapshotTree(insTree) : new Map();
+  renderTreeFromSnap(document.getElementById('tree-canvas-ins'), insCurrentSnap, null);
+  buildInsStepList();
+  document.getElementById('ins-prev-btn').disabled = insStep === 0;
+  document.getElementById('ins-next-btn').disabled = insStep >= INS_SEQUENCE.length;
+}
+
+function showStatus(id, msg) {
+  const el2 = document.getElementById(id);
+  if (!msg) { el2.classList.remove('show'); return; }
+  el2.textContent = msg;
+  el2.classList.add('show');
+  clearTimeout(el2._t);
+  el2._t = setTimeout(() => el2.classList.remove('show'), 2500);
+}
+
+function insNext() {
+  if (insAnimating || insStep >= INS_SEQUENCE.length) return;
+  insAnimating = true;
+  document.getElementById('ins-next-btn').disabled = true;
+
+  const val = INS_SEQUENCE[insStep];
+  // snapshot BEFORE mutation
+  const oldSnap = insCurrentSnap;
+  const { node: newTree, rotType } = insertAVL(insTree, val);
+  insTree = newTree;
+  INS_STEP_LABELS[insStep].rot = rotType || '';
+  // snapshot AFTER mutation
+  const newSnap = snapshotTree(insTree);
+
+  const svgEl = document.getElementById('tree-canvas-ins');
+  let msg = `Inserted ${val}`;
+  if (rotType) msg += ` → ${rotType} Rotation`;
+
+  morphTree(svgEl, oldSnap, newSnap, 650, rotType ? new Set([val]) : null, () => {
+    insCurrentSnap = newSnap;
+    insStep++;
+    buildInsStepList();
+    showStatus('ins-status', msg);
+    insAnimating = false;
+    document.getElementById('ins-prev-btn').disabled = insStep === 0;
+    if (insStep < INS_SEQUENCE.length)
+      document.getElementById('ins-next-btn').disabled = false;
+  });
+}
+
+function insPrev() {
+  if (insAnimating || insStep === 0) return;
+  rebuildInsTo(insStep - 1);
+  showStatus('ins-status', insStep ? `Back to after inserting ${INS_SEQUENCE[insStep - 1]}` : 'Back to empty tree');
+}
+
+function applyCustomInsert() {
+  const vals = parseNumberList(document.getElementById('ins-custom').value);
+  if (!vals.length) { showStatus('ins-status', 'Enter values like 10, 20, 30'); return; }
+  INS_SEQUENCE = vals;
+  insReset();
+}
+
+insReset();
+
+// ═══════════════════════════════════════════════════
+//  DELETION PAGE
+// ═══════════════════════════════════════════════════
+// Build the same insertion tree first
+function buildFullInsTree() {
+  let t = null;
+  for (const v of INS_SEQUENCE) { t = insertAVL(t, v).node; }
+  return t;
+}
+
+let DEL_SEQUENCE = [
+  { val: 30, label: 'Delete 30 (→ RR)' },
+  { val: 50, label: 'Delete 50 (no rot)' },
+  { val: 35, label: 'Delete 35 (→ LR)' },
+  { val: 40, label: 'Delete 40 (no rot)' },
+  { val: 10, label: 'Delete 10 (no rot)' },
+  { val: 20, label: 'Delete 20 (→ LL)' },
+  { val: 1,  label: 'Delete 1  (→ RL)' },
+];
+
+let delTree = null;
+let delStep = 0;
+let delAnimating = false;
+let delCurrentSnap = new Map();
+
+function delReset() {
+  delTree = buildFullInsTree();
+  delStep = 0;
+  delCurrentSnap = snapshotTree(delTree);
+  const svgEl = document.getElementById('tree-canvas-del');
+  renderTreeFromSnap(svgEl, delCurrentSnap, null);
+  buildDelStepList();
+  document.getElementById('del-next-btn').disabled = false;
+  document.getElementById('del-prev-btn').disabled = true;
+  showStatus('del-status', '');
+}
+
+function buildDelStepList() {
+  const ul = document.getElementById('del-steps');
+  ul.innerHTML = '';
+  DEL_SEQUENCE.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.className = 'step-item rot' + (i < delStep ? ' done' : '') + (i === delStep ? ' current' : '');
+    li.innerHTML = `<span>${s.label}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+function rebuildDelTo(targetStep) {
+  delTree = buildFullInsTree();
+  for (let i = 0; i < targetStep; i++) {
+    delTree = deleteAVL(delTree, DEL_SEQUENCE[i].val).node;
+  }
+  delStep = targetStep;
+  delCurrentSnap = delTree ? snapshotTree(delTree) : new Map();
+  renderTreeFromSnap(document.getElementById('tree-canvas-del'), delCurrentSnap, null);
+  buildDelStepList();
+  document.getElementById('del-prev-btn').disabled = delStep === 0;
+  document.getElementById('del-next-btn').disabled = delStep >= DEL_SEQUENCE.length;
+}
+
+function delNext() {
+  if (delAnimating || delStep >= DEL_SEQUENCE.length) return;
+  delAnimating = true;
+  document.getElementById('del-next-btn').disabled = true;
+
+  const { val, label } = DEL_SEQUENCE[delStep];
+  const oldSnap = delCurrentSnap;
+  const { node: newTree, rotType } = deleteAVL(delTree, val);
+  delTree = newTree;
+  const newSnap = delTree ? snapshotTree(delTree) : new Map();
+
+  const svgEl = document.getElementById('tree-canvas-del');
+  let msg = `Deleted ${val}`;
+  if (rotType) msg += ` → ${rotType} Rotation`;
+
+  morphTree(svgEl, oldSnap, newSnap, 700, null, () => {
+    delCurrentSnap = newSnap;
+    delStep++;
+    buildDelStepList();
+    showStatus('del-status', msg);
+    delAnimating = false;
+    document.getElementById('del-prev-btn').disabled = delStep === 0;
+    if (delStep < DEL_SEQUENCE.length)
+      document.getElementById('del-next-btn').disabled = false;
+  });
+}
+
+function delPrev() {
+  if (delAnimating || delStep === 0) return;
+  rebuildDelTo(delStep - 1);
+  showStatus('del-status', delStep ? `Back to after ${DEL_SEQUENCE[delStep - 1].label}` : 'Back to initial tree');
+}
+
+function applyCustomDelete() {
+  const vals = parseNumberList(document.getElementById('del-custom').value);
+  if (!vals.length) { showStatus('del-status', 'Enter values like 30, 50, 35'); return; }
+  DEL_SEQUENCE = vals.map(v => ({ val: v, label: `Delete ${v}` }));
+  delReset();
+}
+
+delReset();
+</script>
+</body>
+</html>

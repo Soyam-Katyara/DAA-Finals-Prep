@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Graph Traversal Visualizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@600&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --panel: #12161e;
+    --border: #1e2a3a;
+    --accent: #00d4ff;
+    --green: #00ff88;
+    --orange: #ff9900;
+    --dim: #3a4a5a;
+    --text: #c8d8e8;
+    --visited: #00ff88;
+    --instack: #ff9900;
+    --unvisited: #2a3a4a;
+    --node-border: #1e8aaa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .btn-group { display: flex; gap: 10px; margin-left: auto; align-items: center; }
+
+  button {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 7px 20px;
+    border: 1px solid;
+    cursor: pointer;
+    background: transparent;
+    letter-spacing: 2px;
+    transition: all 0.15s;
+  }
+
+  #btn-dfs { border-color: var(--accent); color: var(--accent); }
+  #btn-dfs:hover, #btn-dfs.active { background: var(--accent); color: var(--bg); }
+
+  #btn-bfs { border-color: var(--green); color: var(--green); }
+  #btn-bfs:hover, #btn-bfs.active { background: var(--green); color: var(--bg); }
+
+  #btn-step, #btn-prev {
+    border-color: var(--orange); color: var(--orange);
+    display: none;
+  }
+  #btn-step:hover, #btn-prev:hover { background: var(--orange); color: var(--bg); }
+
+  #btn-reset { border-color: var(--dim); color: var(--dim); }
+  #btn-reset:hover { border-color: var(--text); color: var(--text); }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* LEFT PANEL */
+  .left-panel {
+    width: 200px;
+    min-width: 200px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .panel-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    padding: 8px 12px 4px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  /* Terminal */
+  .terminal {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.8;
+    background: #0a0c10;
+  }
+
+  .terminal .t-line { display: flex; gap: 6px; }
+  .terminal .t-prompt { color: var(--dim); }
+  .terminal .t-node { color: var(--text); }
+  .terminal .t-node.visited { color: var(--visited); }
+
+  /* Stack / Queue panel */
+  .sq-panel {
+    border-top: 1px solid var(--border);
+    display: none;
+    flex-direction: column;
+    max-height: 220px;
+  }
+  .sq-panel.visible { display: flex; }
+
+  .sq-items {
+    padding: 8px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .sq-item {
+    font-size: 12px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    color: var(--instack);
+    background: #1a120a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sq-item .sq-tag {
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  /* GRAPH CANVAS */
+  .graph-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  svg#graph {
+    width: 100%;
+    height: 100%;
+  }
+
+  .edge { stroke: var(--border); stroke-width: 2; transition: stroke 0.3s; }
+  .edge.active { stroke: var(--accent); stroke-width: 2.5; }
+
+  .node-circle {
+    fill: var(--unvisited);
+    stroke: var(--node-border);
+    stroke-width: 2;
+    transition: fill 0.3s, stroke 0.3s;
+    cursor: default;
+  }
+  .node-circle.current { fill: var(--instack); stroke: var(--orange); stroke-width: 3; }
+  .node-circle.visited { fill: #0a3a2a; stroke: var(--visited); }
+  .node-circle.in-sq { fill: #1a1a0a; stroke: var(--instack); }
+
+  .node-label {
+    fill: var(--text);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+    transition: fill 0.3s;
+  }
+  .node-label.visited { fill: var(--visited); }
+  .node-label.current { fill: var(--bg); }
+
+  /* Legend */
+  .legend {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    gap: 14px;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid;
+  }
+
+  .status-bar {
+    padding: 5px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    background: var(--panel);
+  }
+  #status-msg { color: var(--accent); }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html" class="active">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<header>
+  <h1>Graph Traversal</h1>
+  <div class="btn-group">
+    <button id="btn-dfs">▶ DFS</button>
+    <button id="btn-bfs">▶ BFS</button>
+    <button id="btn-prev">← STEP</button>
+    <button id="btn-step">STEP →</button>
+    <button id="btn-reset">RESET</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Left Panel -->
+  <div class="left-panel">
+    <div class="panel-label">// terminal</div>
+    <div class="terminal" id="terminal">
+      <div class="t-line"><span class="t-prompt">$</span><span class="t-node" style="color:var(--dim)">ready_</span></div>
+    </div>
+
+    <!-- Stack/Queue panel -->
+    <div class="sq-panel" id="sq-panel">
+      <div class="panel-label" id="sq-label">// stack</div>
+      <div class="sq-items" id="sq-items"></div>
+    </div>
+  </div>
+
+  <!-- Graph SVG -->
+  <div class="graph-area">
+    <svg id="graph"></svg>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--node-border);background:var(--unvisited)"></div>unvisited</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--orange);background:#1a1a0a"></div>in stack/queue</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--visited);background:#0a3a2a"></div>visited</div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span id="status-msg">select DFS or BFS to begin</span>
+</div>
+
+<script>
+// ── Graph Definition ────────────────────────────────────────────────
+const NODES = ['A','B','C','D','E','F','G','H'];
+const EDGES = [
+  ['A','B'],['A','C'],['A','D'],
+  ['B','E'],['B','F'],
+  ['C','F'],['C','G'],
+  ['D','G'],['D','H'],
+  ['E','F'],
+  ['F','G'],
+  ['G','H'],
+  ['B','C'],
+  ['E','H'],
+  ['A','F'],
+  ['D','E']
+];
+
+// Node positions (centered in SVG, adjusted via JS)
+const NODE_POS = {
+  A: [0.50, 0.15],
+  B: [0.25, 0.38],
+  C: [0.55, 0.38],
+  D: [0.78, 0.38],
+  E: [0.15, 0.65],
+  F: [0.42, 0.65],
+  G: [0.68, 0.65],
+  H: [0.88, 0.65],
+};
+
+// Build adjacency list
+const adj = {};
+NODES.forEach(n => adj[n] = []);
+EDGES.forEach(([a,b]) => { adj[a].push(b); adj[b].push(a); });
+// Sort neighbors for deterministic traversal
+NODES.forEach(n => adj[n].sort());
+
+// ── SVG Rendering ───────────────────────────────────────────────────
+const svg = document.getElementById('graph');
+let svgW, svgH;
+
+function getPos(n) {
+  return [NODE_POS[n][0] * svgW, NODE_POS[n][1] * svgH];
+}
+
+function buildSVG() {
+  svg.innerHTML = '';
+  svgW = svg.clientWidth;
+  svgH = svg.clientHeight;
+
+  // Draw edges
+  EDGES.forEach(([a,b]) => {
+    const [x1,y1] = getPos(a), [x2,y2] = getPos(b);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('class','edge');
+    line.id = `edge-${a}-${b}`;
+    svg.appendChild(line);
+  });
+
+  // Draw nodes
+  NODES.forEach(n => {
+    const [cx,cy] = getPos(n);
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',cx); circle.setAttribute('cy',cy);
+    circle.setAttribute('r', 22);
+    circle.setAttribute('class','node-circle');
+    circle.id = `nc-${n}`;
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x',cx); label.setAttribute('y',cy);
+    label.setAttribute('class','node-label');
+    label.id = `nl-${n}`;
+    label.textContent = n;
+
+    g.appendChild(circle); g.appendChild(label);
+    svg.appendChild(g);
+  });
+}
+
+window.addEventListener('resize', () => { buildSVG(); applyState(); });
+buildSVG();
+
+// ── State ────────────────────────────────────────────────────────────
+let mode = null;       // 'dfs' | 'bfs'
+let steps = [];        // list of step objects
+let stepIdx = 0;
+let visited = new Set();
+let inSQ = new Set();  // in stack or queue
+let termLines = [];
+
+// step: { type: 'visit'|'push'|'pop'|'done', node, sq: [...] }
+
+function applyState() {
+  // Reset visuals
+  NODES.forEach(n => {
+    const nc = document.getElementById(`nc-${n}`);
+    const nl = document.getElementById(`nl-${n}`);
+    if (!nc) return;
+    nc.className.baseVal = 'node-circle';
+    nl.className.baseVal = 'node-label';
+  });
+  EDGES.forEach(([a,b]) => {
+    const el = document.getElementById(`edge-${a}-${b}`);
+    if (el) el.className.baseVal = 'edge';
+  });
+
+  // Apply visited
+  visited.forEach(n => {
+    document.getElementById(`nc-${n}`).classList.add('visited');
+    document.getElementById(`nl-${n}`).classList.add('visited');
+  });
+
+  // Apply in-stack/queue
+  inSQ.forEach(n => {
+    if (!visited.has(n)) {
+      document.getElementById(`nc-${n}`).classList.add('in-sq');
+    }
+  });
+}
+
+// ── Traversal Generators ─────────────────────────────────────────────
+function generateDFS(start) {
+  const steps = [];
+  const vis = new Set();
+  const stack = [start];
+  vis.add(start);
+  steps.push({ type:'push', node:start, sq:[...stack] });
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    vis.add(node);
+    steps.push({ type:'visit', node, sq:[...stack] });
+
+    // Push neighbors in reverse so left-most is processed first
+    const neighbors = [...adj[node]].reverse();
+    neighbors.forEach(nb => {
+      if (!vis.has(nb)) {
+        vis.add(nb);
+        stack.push(nb);
+        steps.push({ type:'push', node:nb, sq:[...stack] });
+      }
+    });
+  }
+  steps.push({ type:'done', node:null, sq:[] });
+  return steps;
+}
+
+function generateBFS(start) {
+  const steps = [];
+  const vis = new Set();
+  const queue = [start];
+  vis.add(start);
+  steps.push({ type:'push', node:start, sq:[...queue] });
+
+  while (queue.length > 0) {
+    const node = queue.shift();
+    steps.push({ type:'visit', node, sq:[...queue] });
+
+    adj[node].forEach(nb => {
+      if (!vis.has(nb)) {
+        vis.add(nb);
+        queue.push(nb);
+        steps.push({ type:'push', node:nb, sq:[...queue] });
+      }
+    });
+  }
+  steps.push({ type:'done', node:null, sq:[] });
+  return steps;
+}
+
+// ── UI Updates ───────────────────────────────────────────────────────
+function updateSQPanel(sq) {
+  const panel = document.getElementById('sq-panel');
+  const items = document.getElementById('sq-items');
+  items.innerHTML = '';
+
+  if (mode === 'dfs') {
+    // Stack: show top at top
+    [...sq].reverse().forEach((n, i) => {
+      const div = document.createElement('div');
+      div.className = 'sq-item';
+      div.innerHTML = `<span>Node ${n}</span><span class="sq-tag">${i===0?'TOP':''}</span>`;
+      items.appendChild(div);
+    });
+  } else {
+    // Queue: show front at top
+    sq.forEach((n, i) => {
+      const div = document.createElement('div');
+      div.className = 'sq-item';
+      div.innerHTML = `<span>Node ${n}</span><span class="sq-tag">${i===0?'FRONT':i===sq.length-1?'BACK':''}</span>`;
+      items.appendChild(div);
+    });
+  }
+}
+
+function addTermLine(text, isVisited) {
+  const terminal = document.getElementById('terminal');
+  const div = document.createElement('div');
+  div.className = 't-line';
+  div.innerHTML = `<span class="t-prompt">$</span><span class="t-node${isVisited?' visited':''}">${text}</span>`;
+  terminal.appendChild(div);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function setStatus(msg) {
+  document.getElementById('status-msg').textContent = msg;
+}
+
+// ── Step Execution ───────────────────────────────────────────────────
+function execStep() {
+  if (stepIdx >= steps.length) return;
+  const s = steps[stepIdx++];
+
+  if (s.type === 'push') {
+    inSQ.add(s.node);
+    const label = mode === 'dfs' ? 'pushed to stack' : 'enqueued';
+    addTermLine(`  ${s.node} → ${label}`, false);
+    setStatus(`${s.node} added to ${mode==='dfs'?'stack':'queue'}`);
+  } else if (s.type === 'visit') {
+    inSQ.delete(s.node);
+    visited.add(s.node);
+    addTermLine(`✓ visiting ${s.node}`, true);
+    setStatus(`visiting node ${s.node}`);
+    // Highlight current node briefly
+    const nc = document.getElementById(`nc-${s.node}`);
+    if (nc) { nc.classList.add('current'); setTimeout(()=>nc.classList.remove('current'),400); }
+  } else if (s.type === 'done') {
+    addTermLine('── traversal complete ──', false);
+    setStatus('traversal complete!');
+    document.getElementById('btn-step').disabled = true;
+    document.getElementById('btn-step').style.opacity = '0.3';
+  }
+
+  updateSQPanel(s.sq);
+  inSQ = new Set(s.sq);
+  applyState();
+  document.getElementById('btn-prev').disabled = stepIdx === 0;
+
+  if (s.type !== 'done') {
+    // Peek next
+    if (stepIdx < steps.length) {
+      const next = steps[stepIdx];
+      if (next.type === 'visit') setStatus(`next: visit ${next.node}`);
+    }
+  }
+}
+
+function prevStep() {
+  if (!mode || stepIdx === 0) return;
+  const currentMode = mode;
+  const target = stepIdx - 1;
+  reset(false);
+  startTraversal(currentMode);
+  for (let i = 0; i < target; i++) execStep();
+  const stepBtn = document.getElementById('btn-step');
+  stepBtn.disabled = false;
+  stepBtn.style.opacity = '1';
+}
+
+// ── Button Handlers ──────────────────────────────────────────────────
+function startTraversal(m) {
+  reset(false);
+  mode = m;
+
+  document.getElementById('btn-dfs').classList.toggle('active', m==='dfs');
+  document.getElementById('btn-bfs').classList.toggle('active', m==='bfs');
+
+  const sqPanel = document.getElementById('sq-panel');
+  const sqLabel = document.getElementById('sq-label');
+  sqPanel.classList.add('visible');
+  sqLabel.textContent = m === 'dfs' ? '// stack' : '// queue';
+
+  steps = m === 'dfs' ? generateDFS('A') : generateBFS('A');
+  stepIdx = 0;
+  visited = new Set();
+  inSQ = new Set();
+
+  const stepBtn = document.getElementById('btn-step');
+  stepBtn.style.display = 'inline-block';
+  stepBtn.disabled = false;
+  stepBtn.style.opacity = '1';
+  document.getElementById('btn-prev').style.display = 'inline-block';
+  document.getElementById('btn-prev').disabled = true;
+
+  document.getElementById('terminal').innerHTML = '';
+  addTermLine(`starting ${m.toUpperCase()} from node A`, false);
+  setStatus(`${m.toUpperCase()} ready — press STEP`);
+  applyState();
+}
+
+function reset(full=true) {
+  mode = null;
+  steps = [];
+  stepIdx = 0;
+  visited = new Set();
+  inSQ = new Set();
+
+  document.getElementById('btn-dfs').classList.remove('active');
+  document.getElementById('btn-bfs').classList.remove('active');
+  document.getElementById('btn-step').style.display = 'none';
+  document.getElementById('btn-prev').style.display = 'none';
+  document.getElementById('sq-panel').classList.remove('visible');
+  document.getElementById('sq-items').innerHTML = '';
+  document.getElementById('terminal').innerHTML =
+    '<div class="t-line"><span class="t-prompt">$</span><span class="t-node" style="color:var(--dim)">ready_</span></div>';
+  setStatus('select DFS or BFS to begin');
+  applyState();
+}
+
+document.getElementById('btn-dfs').addEventListener('click', () => startTraversal('dfs'));
+document.getElementById('btn-bfs').addEventListener('click', () => startTraversal('bfs'));
+document.getElementById('btn-step').addEventListener('click', execStep);
+document.getElementById('btn-prev').addEventListener('click', prevStep);
+document.getElementById('btn-reset').addEventListener('click', () => reset(true));
+</script>
+</body>
+</html>

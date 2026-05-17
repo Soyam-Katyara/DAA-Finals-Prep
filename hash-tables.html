@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hash Tables — Visual Learning</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a24;
+    --border: #252c3d;
+    --accent: #00e5ff;
+    --accent2: #ff4081;
+    --accent3: #69ff47;
+    --text: #e8eaf0;
+    --muted: #7a8099;
+    --cell-empty: #1e2436;
+    --cell-filled: #0d2a3a;
+    --cell-active: #003d52;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* TOP NAV */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #0a0c10;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-right: 16px;
+    white-space: nowrap;
+  }
+
+  .nav-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.08); }
+
+  /* PAGES */
+  .page { display: none; padding: 28px 28px; }
+  .page.active { display: block; }
+
+  /* ── DIRECT ADDRESS TABLE ── */
+  .info-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #b8c0d4;
+  }
+
+  .section-title {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+
+  .card h3 {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .card.adv h3 { color: var(--accent3); }
+  .card.lim h3 { color: var(--accent2); }
+
+  .card ol, .card ul { padding-left: 18px; font-size: 0.85rem; color: #b8c0d4; line-height: 1.8; }
+  .card li strong { color: var(--text); }
+
+  /* DAT animation demo */
+  .dat-demo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+
+  .dat-demo h3 { font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+
+  .dat-controls { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+
+  .dat-controls input {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 4px;
+    width: 90px;
+    font-size: 0.85rem;
+  }
+
+  .btn-sm {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-insert { border-color: var(--accent3); color: var(--accent3); background: transparent; }
+  .btn-insert:hover { background: rgba(105,255,71,0.1); }
+  .btn-search { border-color: var(--accent); color: var(--accent); background: transparent; }
+  .btn-search:hover { background: rgba(0,229,255,0.1); }
+  .btn-delete { border-color: var(--accent2); color: var(--accent2); background: transparent; }
+  .btn-delete:hover { background: rgba(255,64,129,0.1); }
+  .btn-reset { border-color: var(--muted); color: var(--muted); background: transparent; }
+  .btn-reset:hover { border-color: var(--text); color: var(--text); }
+
+  .dat-array {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+  }
+
+  .dat-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .dat-cell .idx { color: var(--muted); font-size: 0.65rem; }
+
+  .dat-cell .val {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cell-empty);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transition: all 0.3s;
+    font-size: 0.85rem;
+  }
+
+  .dat-cell .val.highlight-insert { background: rgba(105,255,71,0.25); border-color: var(--accent3); color: var(--accent3); transform: scale(1.15); }
+  .dat-cell .val.highlight-search { background: rgba(0,229,255,0.2); border-color: var(--accent); color: var(--accent); transform: scale(1.1); }
+  .dat-cell .val.highlight-delete { background: rgba(255,64,129,0.2); border-color: var(--accent2); color: var(--accent2); }
+  .dat-cell .val.filled { background: var(--cell-filled); border-color: #2a4a5e; color: var(--text); }
+  .dat-cell .val.scanning { background: rgba(255,200,0,0.15); border-color: gold; animation: pulse 0.4s ease; }
+
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+  .log {
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    min-height: 22px;
+    transition: all 0.3s;
+  }
+
+  .log .ok { color: var(--accent3); }
+  .log .err { color: var(--accent2); }
+  .log .info { color: var(--accent); }
+
+  /* ── HASH INTRO ── */
+  .intro-body { font-size: 0.88rem; line-height: 1.8; color: #b8c0d4; }
+  .intro-body p { margin-bottom: 14px; }
+  .mono { font-family: 'JetBrains Mono', monospace; background: var(--bg); border: 1px solid var(--border); padding: 2px 7px; border-radius: 3px; font-size: 0.82rem; color: var(--accent); }
+
+  /* ── SUB NAV ── */
+  .sub-nav { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+
+  .sub-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 7px 15px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .sub-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .sub-btn.active { border-color: var(--accent2); color: var(--accent2); background: rgba(255,64,129,0.08); }
+
+  .sub-page { display: none; }
+  .sub-page.active { display: block; }
+
+  /* ── OPEN ADDRESSING ── */
+  .oa-layout { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; }
+
+  .oa-left {}
+
+  .oa-controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  .tech-btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .tech-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+  .tech-btn.active { border-color: var(--accent3); color: var(--accent3); background: rgba(105,255,71,0.08); }
+
+  .sequence-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+
+  .sequence-list h4 { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  .seq-items { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .seq-item {
+    font-family: 'JetBrains Mono', monospace;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .seq-item.done { color: var(--accent3); border-color: var(--accent3); background: rgba(105,255,71,0.08); }
+  .seq-item.current { color: #fff; border-color: gold; background: rgba(255,200,0,0.15); animation: pulse 0.5s ease infinite; }
+
+  .hash-fn-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #b8c0d4;
+    line-height: 1.8;
+  }
+
+  .hash-fn-box span { color: var(--accent); }
+
+  .anim-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Hash Table (vertical) */
+  .ht-wrap { min-width: 120px; }
+  .ht-wrap h4 { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; text-align: center; }
+
+  .ht-table { display: flex; flex-direction: column; gap: 3px; }
+
+  .ht-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  .ht-row .ri { width: 20px; text-align: right; color: var(--muted); font-size: 0.7rem; }
+
+  .ht-row .rv {
+    width: 56px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cell-empty);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    transition: all 0.35s;
+    font-size: 0.85rem;
+  }
+
+  .ht-row .rv.scanning { background: rgba(255,200,0,0.12); border-color: gold; color: gold; animation: pulse 0.4s ease; }
+  .ht-row .rv.inserting { background: rgba(105,255,71,0.2); border-color: var(--accent3); color: var(--accent3); transform: scale(1.1); }
+  .ht-row .rv.filled { background: var(--cell-filled); border-color: #2a4a5e; color: var(--text); }
+  .ht-row .rv.collision { background: rgba(255,64,129,0.15); border-color: var(--accent2); color: var(--accent2); animation: pulse 0.4s ease; }
+
+  .step-log {
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.73rem;
+    color: var(--muted);
+    line-height: 1.9;
+    min-height: 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+
+  .step-log .log-group { border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px; }
+  .step-log .log-header { color: var(--text); font-weight: 700; }
+  .step-log .log-collision { color: var(--accent2); }
+  .step-log .log-insert { color: var(--accent3); }
+  .step-log .log-done { color: var(--accent); }
+
+  /* Separate Chaining */
+  .sc-layout { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; }
+
+  .sc-table { display: flex; flex-direction: column; gap: 4px; min-width: 260px; }
+
+  .sc-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  .sc-row .ri { width: 22px; text-align: right; color: var(--muted); font-size: 0.7rem; margin-right: 6px; }
+
+  .sc-head {
+    width: 52px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cell-empty);
+    border: 1px solid var(--border);
+    border-radius: 4px 0 0 4px;
+    color: var(--muted);
+    border-right: none;
+    transition: all 0.3s;
+  }
+
+  .sc-head.has-item { background: var(--cell-filled); border-color: #2a4a5e; color: var(--text); }
+  .sc-head.inserting { background: rgba(105,255,71,0.2); border-color: var(--accent3); color: var(--accent3); }
+
+  .sc-chain { display: flex; align-items: center; gap: 0; }
+
+  .sc-arrow { width: 20px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 0.8rem; }
+
+  .sc-node {
+    width: 44px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,229,255,0.1);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 0.82rem;
+    animation: nodeIn 0.3s ease;
+  }
+
+  @keyframes nodeIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+
+  /* Load Factor */
+  .lf-body { font-size: 0.88rem; line-height: 1.8; color: #b8c0d4; }
+  .lf-body p { margin-bottom: 12px; }
+  .formula {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    margin: 16px 0;
+  }
+
+  .lf-demo { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-top: 16px; }
+  .lf-demo h4 { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+  .lf-bar-wrap { background: var(--bg); border-radius: 4px; overflow: hidden; height: 24px; margin-bottom: 8px; border: 1px solid var(--border); }
+  .lf-bar { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent)); border-radius: 4px; transition: width 0.5s ease; display: flex; align-items: center; padding-left: 8px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+
+  .lf-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .lf-controls input[type=range] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+  .lf-stat { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text); }
+
+  /* Complexity */
+  .complexity-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
+  .complexity-table th { background: var(--surface); color: var(--accent); font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; padding: 12px 14px; border: 1px solid var(--border); text-align: left; }
+  .complexity-table td { padding: 10px 14px; border: 1px solid var(--border); color: #b8c0d4; }
+  .complexity-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .complexity-table .best { color: var(--accent3); }
+  .complexity-table .avg { color: var(--accent); }
+  .complexity-table .worst { color: var(--accent2); }
+  .complexity-table .op { color: var(--text); font-weight: 700; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html" class="active">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<header>
+  <h1>Direct Address & Hash Tables</h1>
+  <button class="nav-btn active" onclick="showPage('dat')">Direct-Address Tables</button>
+  <button class="nav-btn" onclick="showPage('hash')">Hash Tables</button>
+</header>
+
+<!-- ════════════════════════════════ DIRECT ADDRESS TABLE ════════════════════════════════ -->
+<div id="page-dat" class="page active">
+  <div class="section-title">Direct Address Table</div>
+  <div class="info-box">
+    Direct Address Table is a data structure that has the capability of mapping records to their corresponding keys using arrays. Records are placed using their key values directly as indexes. They facilitate fast searching, insertion and deletion operations.
+  </div>
+
+  <div class="cards">
+    <div class="card adv">
+      <h3>✓ Advantages</h3>
+      <ol>
+        <li><strong>Search in O(1):</strong> Arrays are random-access; key = index, so lookup is instant.</li>
+        <li><strong>Insert in O(1):</strong> Place the value at <code>table[key]</code> directly.</li>
+        <li><strong>Delete in O(1):</strong> Set <code>table[key] = null</code> — done.</li>
+      </ol>
+    </div>
+    <div class="card lim">
+      <h3>✗ Limitations</h3>
+      <ul>
+        <li>Requires prior knowledge of maximum key value.</li>
+        <li>Practical only when max key value is small.</li>
+        <li>Wastes memory when stored records ≪ table size.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="dat-demo">
+    <h3>Interactive Demo — Table size 16 (keys 0–15)</h3>
+    <div class="dat-controls">
+      <input type="number" id="dat-key" placeholder="key" min="0" max="15">
+      <button class="btn-sm btn-insert" onclick="datInsert()">Insert</button>
+      <button class="btn-sm btn-search" onclick="datSearch()">Search</button>
+      <button class="btn-sm btn-delete" onclick="datDelete()">Delete</button>
+      <button class="btn-sm btn-reset" onclick="datReset()">Reset</button>
+    </div>
+    <div class="dat-array" id="dat-array"></div>
+    <div class="log" id="dat-log"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ HASH TABLES ════════════════════════════════ -->
+<div id="page-hash" class="page">
+  <div class="sub-nav">
+    <button class="sub-btn active" onclick="showSub('intro')">Intro</button>
+    <button class="sub-btn" onclick="showSub('oa')">Open Addressing</button>
+    <button class="sub-btn" onclick="showSub('sc')">Separate Chaining</button>
+    <button class="sub-btn" onclick="showSub('lf')">Load Factor</button>
+    <button class="sub-btn" onclick="showSub('cx')">Complexity</button>
+  </div>
+
+  <!-- INTRO -->
+  <div id="sub-intro" class="sub-page active">
+    <div class="section-title">What is a Hash Table?</div>
+    <div class="intro-body">
+      <p>A <strong>Hash Table</strong> is a data structure that maps keys to values using a <strong>hash function</strong>. Instead of storing data at the key's value directly (like Direct Address Tables), it computes an index using:</p>
+      <div class="formula">index = hash(key) mod table_size</div>
+      <p>This allows a <em>large key space</em> to map into a <em>small array</em>, saving memory. The trade-off: two different keys may hash to the same index — this is called a <strong style="color:var(--accent2)">collision</strong>.</p>
+      <p>There are two main strategies for handling collisions:</p>
+      <div class="cards" style="margin-top:8px">
+        <div class="card" style="border-left:3px solid var(--accent3)">
+          <h3 style="color:var(--accent3)">Open Addressing</h3>
+          <p style="font-size:0.85rem;color:#b8c0d4;line-height:1.7">When a collision occurs, probe for the next available slot in the array itself. Techniques: Linear Probing, Quadratic Probing, Double Hashing.</p>
+        </div>
+        <div class="card" style="border-left:3px solid var(--accent)">
+          <h3 style="color:var(--accent)">Separate Chaining</h3>
+          <p style="font-size:0.85rem;color:#b8c0d4;line-height:1.7">Each slot holds a linked list. Colliding elements are simply appended to the list at that index.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPEN ADDRESSING -->
+  <div id="sub-oa" class="sub-page">
+    <div class="section-title">Open Addressing</div>
+    <div class="oa-layout">
+      <div class="oa-left">
+        <div class="oa-controls">
+          <button class="tech-btn active" id="tech-lp" onclick="setTech('lp')">Linear Probing</button>
+          <button class="tech-btn" id="tech-qp" onclick="setTech('qp')">Quadratic Probing</button>
+          <button class="tech-btn" id="tech-dh" onclick="setTech('dh')">Double Hashing</button>
+        </div>
+
+        <div class="sequence-list">
+          <h4>Input Sequence</h4>
+          <div class="seq-items" id="oa-seq"></div>
+          <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--muted)">Table size = 9</div>
+        </div>
+
+        <div class="hash-fn-box" id="oa-fn-box">
+          <span>h(key)</span> = key mod 9
+        </div>
+
+        <div class="anim-controls">
+          <button class="btn-sm btn-insert" onclick="oaPrev()">◀ Prev Insert</button>
+          <button class="btn-sm btn-insert" onclick="oaNext()">▶ Next Insert</button>
+          <button class="btn-sm btn-search" onclick="oaAuto()">⚡ Auto Play</button>
+          <button class="btn-sm btn-reset" onclick="oaReset()">↺ Reset</button>
+        </div>
+
+        <div class="step-log" id="oa-log">Press "Next Insert" to start...</div>
+      </div>
+
+      <div class="ht-wrap">
+        <h4>Hash Table</h4>
+        <div class="ht-table" id="oa-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEPARATE CHAINING -->
+  <div id="sub-sc" class="sub-page">
+    <div class="section-title">Separate Chaining</div>
+    <div class="sc-layout">
+      <div>
+        <div class="sequence-list">
+          <h4>Input Sequence</h4>
+          <div class="seq-items" id="sc-seq"></div>
+          <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--muted)">Table size = 9 &nbsp;|&nbsp; h(key) = key mod 9</div>
+        </div>
+        <div class="anim-controls">
+          <button class="btn-sm btn-insert" onclick="scPrev()">◀ Prev Insert</button>
+          <button class="btn-sm btn-insert" onclick="scNext()">▶ Next Insert</button>
+          <button class="btn-sm btn-search" onclick="scAuto()">⚡ Auto Play</button>
+          <button class="btn-sm btn-reset" onclick="scReset()">↺ Reset</button>
+        </div>
+        <div class="step-log" id="sc-log">Press "Next Insert" to start...</div>
+      </div>
+
+      <div>
+        <div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;text-align:center">Hash Table</div>
+        <div class="sc-table" id="sc-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOAD FACTOR -->
+  <div id="sub-lf" class="sub-page">
+    <div class="section-title">Load Factor</div>
+    <div class="lf-body">
+      <p>The <strong>load factor</strong> of a non-empty hash table is the number of items stored divided by the size of the table.</p>
+      <div class="formula">λ = number of elements / hash table size</div>
+      <p>This is the decision parameter used when we want to <strong style="color:var(--accent)">rehash</strong> or <strong style="color:var(--accent)">expand</strong> the existing hash table.</p>
+      <p>Generally the threshold value is <strong style="color:var(--accent3)">0.75</strong>. So, if there are <strong>12 values</strong> in a hash map of size <strong>16</strong>, the load factor becomes <strong style="color:var(--accent3)">0.75</strong> (16 × 0.75 = 12), and the table should be doubled in size.</p>
+    </div>
+    <div class="lf-demo">
+      <h4>Interactive Demo</h4>
+      <div class="lf-controls" style="margin-bottom:12px">
+        <span class="lf-stat">Table size: <span id="lf-size-val">16</span></span>
+        <input type="range" id="lf-size" min="4" max="32" value="16" oninput="lfUpdate()">
+        <span class="lf-stat">Elements: <span id="lf-elem-val">8</span></span>
+        <input type="range" id="lf-elem" min="0" max="32" value="8" oninput="lfUpdate()">
+      </div>
+      <div class="lf-bar-wrap"><div class="lf-bar" id="lf-bar" style="color: black;">λ = ...</div></div>
+      <div class="lf-stat" id="lf-status" style="margin-top:8px;font-size:0.82rem"></div>
+    </div>
+  </div>
+
+  <!-- COMPLEXITY -->
+  <div id="sub-cx" class="sub-page">
+    <div class="section-title">Complexity of Hash Tables</div>
+    <table class="complexity-table">
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Best Case</th>
+          <th>Average Case</th>
+          <th>Worst Case</th>
+          <th>Space</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="op">Search</td>
+          <td class="best">O(1)</td>
+          <td class="avg">O(1)</td>
+          <td class="worst">O(n)</td>
+          <td>O(n)</td>
+        </tr>
+        <tr>
+          <td class="op">Insert</td>
+          <td class="best">O(1)</td>
+          <td class="avg">O(1)</td>
+          <td class="worst">O(n)</td>
+          <td>O(n)</td>
+        </tr>
+        <tr>
+          <td class="op">Delete</td>
+          <td class="best">O(1)</td>
+          <td class="avg">O(1)</td>
+          <td class="worst">O(n)</td>
+          <td>O(n)</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-box" style="margin-top:18px">
+      <strong style="color:var(--accent3)">Best / Average O(1):</strong> With a good hash function and low load factor, most operations hit the right slot immediately.<br><br>
+      <strong style="color:var(--accent2)">Worst O(n):</strong> In the worst case (e.g., all keys hash to the same slot), performance degrades to linear — equivalent to scanning a linked list or probing through every cell.<br><br>
+      <strong>Space O(n):</strong> Hash table uses memory proportional to the number of stored elements.
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════ PAGE NAVIGATION ═══════════════════
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function showSub(s) {
+  document.querySelectorAll('.sub-page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.sub-btn').forEach(x => x.classList.remove('active'));
+  document.getElementById('sub-' + s).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ═══════════════════ DIRECT ADDRESS TABLE ═══════════════════
+const DAT_SIZE = 16;
+let datData = new Array(DAT_SIZE).fill(null);
+
+function datInit() {
+  const arr = document.getElementById('dat-array');
+  arr.innerHTML = '';
+  for (let i = 0; i < DAT_SIZE; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'dat-cell';
+    cell.innerHTML = `<div class="idx">${i}</div><div class="val" id="dc${i}">${datData[i] !== null ? datData[i] : '—'}</div>`;
+    arr.appendChild(cell);
+  }
+}
+
+function datSetLog(msg, type='') {
+  const el = document.getElementById('dat-log');
+  el.innerHTML = `<span class="${type}">${msg}</span>`;
+}
+
+async function datHighlight(idx, cls, ms=600) {
+  const el = document.getElementById('dc' + idx);
+  el.classList.add(cls);
+  await sleep(ms);
+  el.classList.remove(cls);
+}
+
+function datRefresh() {
+  for (let i = 0; i < DAT_SIZE; i++) {
+    const el = document.getElementById('dc' + i);
+    el.className = 'val' + (datData[i] !== null ? ' filled' : '');
+    el.textContent = datData[i] !== null ? datData[i] : '—';
+  }
+}
+
+async function datInsert() {
+  const k = parseInt(document.getElementById('dat-key').value);
+  if (isNaN(k) || k < 0 || k >= DAT_SIZE) { datSetLog('Key must be 0–15', 'err'); return; }
+  datSetLog(`Inserting key=${k} → index ${k}`, 'info');
+  await datHighlight(k, 'highlight-insert', 700);
+  datData[k] = k;
+  datRefresh();
+  datSetLog(`✓ Inserted key=${k} at index ${k}`, 'ok');
+}
+
+async function datSearch() {
+  const k = parseInt(document.getElementById('dat-key').value);
+  if (isNaN(k) || k < 0 || k >= DAT_SIZE) { datSetLog('Key must be 0–15', 'err'); return; }
+  datSetLog(`Searching key=${k} → checking index ${k}`, 'info');
+  await datHighlight(k, 'highlight-search', 700);
+  if (datData[k] !== null) datSetLog(`✓ Found key=${k} at index ${k}`, 'ok');
+  else datSetLog(`✗ key=${k} not found (index ${k} is empty)`, 'err');
+}
+
+async function datDelete() {
+  const k = parseInt(document.getElementById('dat-key').value);
+  if (isNaN(k) || k < 0 || k >= DAT_SIZE) { datSetLog('Key must be 0–15', 'err'); return; }
+  datSetLog(`Deleting key=${k} → index ${k}`, 'info');
+  await datHighlight(k, 'highlight-delete', 700);
+  if (datData[k] !== null) {
+    datData[k] = null; datRefresh();
+    datSetLog(`✓ Deleted key=${k} from index ${k}`, 'ok');
+  } else datSetLog(`✗ key=${k} not found`, 'err');
+}
+
+function datReset() { datData = new Array(DAT_SIZE).fill(null); datRefresh(); datSetLog('Reset.', 'info'); }
+
+datInit();
+
+// ═══════════════════ UTILITIES ═══════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+const OA_SEQ = [9, 18, 27, 11, 20, 29, 14, 17];
+const SC_SEQ = [9, 18, 27, 11, 20, 29, 14, 17];
+const OA_SIZE = 9;
+
+// ═══════════════════ OPEN ADDRESSING ═══════════════════
+let oaTech = 'lp';
+let oaTable = new Array(OA_SIZE).fill(null);
+let oaStep = 0;
+let oaRunning = false;
+
+function setTech(t) {
+  oaTech = t;
+  document.querySelectorAll('.tech-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tech-' + t).classList.add('active');
+  const box = document.getElementById('oa-fn-box');
+  if (t === 'lp') box.innerHTML = `<span>h(key, i)</span> = (key mod 9 + i) mod 9`;
+  else if (t === 'qp') box.innerHTML = `<span>h(key, i)</span> = (key mod 9 + i²) mod 9`;
+  else box.innerHTML = `<span>h1(key)</span> = key mod 9<br><span>h2(key)</span> = 7 − (key mod 7)<br><span>h(key, i)</span> = (h1 + i·h2) mod 9`;
+  oaReset();
+}
+
+function oaProbe(key, i) {
+  const h1 = key % OA_SIZE;
+  if (oaTech === 'lp') return (h1 + i) % OA_SIZE;
+  if (oaTech === 'qp') return (h1 + i * i) % OA_SIZE;
+  const h2 = 7 - (key % 7);
+  return (h1 + i * h2) % OA_SIZE;
+}
+
+function oaInitUI() {
+  const seqEl = document.getElementById('oa-seq');
+  seqEl.innerHTML = OA_SEQ.map((v, i) => `<div class="seq-item" id="oas${i}">${v}</div>`).join('');
+  const tbl = document.getElementById('oa-table');
+  tbl.innerHTML = Array.from({length: OA_SIZE}, (_, i) =>
+    `<div class="ht-row"><div class="ri">${i}</div><div class="rv" id="oac${i}">—</div></div>`
+  ).join('');
+}
+
+function oaRefreshTable() {
+  for (let i = 0; i < OA_SIZE; i++) {
+    const el = document.getElementById('oac' + i);
+    el.className = 'rv' + (oaTable[i] !== null ? ' filled' : '');
+    el.textContent = oaTable[i] !== null ? oaTable[i] : '—';
+  }
+}
+
+let oaCurrentGroup = null;
+
+function oaLogHeader(msg) {
+  const el = document.getElementById('oa-log');
+  oaCurrentGroup = document.createElement('div');
+  oaCurrentGroup.className = 'log-group';
+  oaCurrentGroup.innerHTML = `<div class="log-header">${msg}</div>`;
+  el.appendChild(oaCurrentGroup);
+  el.scrollTop = el.scrollHeight;
+}
+
+function oaLogLine(msg, cls) {
+  const el = document.getElementById('oa-log');
+  const line = document.createElement('div');
+  line.className = cls || '';
+  line.textContent = msg;
+  (oaCurrentGroup || el).appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function oaNext() {
+  if (oaRunning) return;
+  if (oaStep >= OA_SEQ.length) {
+    oaLogLine('✓ All elements inserted.', 'log-done');
+    return;
+  }
+  oaRunning = true;
+  const key = OA_SEQ[oaStep];
+  document.getElementById('oas' + oaStep).className = 'seq-item current';
+  oaLogHeader(`Inserting key = ${key}`);
+
+  let inserted = false;
+  for (let i = 0; i < OA_SIZE; i++) {
+    const idx = oaProbe(key, i);
+    const cell = document.getElementById('oac' + idx);
+    if (oaTable[idx] !== null) {
+      cell.classList.add('collision');
+      oaLogLine(`  i=${i} → probe[${idx}] = ${oaTable[idx]}  ✗ collision`, 'log-collision');
+      await sleep(500);
+      cell.classList.remove('collision');
+      cell.classList.add('filled');
+    } else {
+      cell.classList.add('scanning');
+      await sleep(350);
+      cell.classList.remove('scanning');
+      cell.classList.add('inserting');
+      oaLogLine(`  i=${i} → probe[${idx}] = empty  ✓ inserted`, 'log-insert');
+      oaTable[idx] = key;
+      oaRefreshTable();
+      await sleep(500);
+      cell.classList.remove('inserting');
+      cell.classList.add('filled');
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) oaLogLine(`  Table full — could not insert key=${key}`, 'log-collision');
+  document.getElementById('oas' + oaStep).className = 'seq-item done';
+  oaStep++;
+  oaRunning = false;
+}
+
+function oaInsertSilent(key) {
+  for (let i = 0; i < OA_SIZE; i++) {
+    const idx = oaProbe(key, i);
+    if (oaTable[idx] === null) { oaTable[idx] = key; return idx; }
+  }
+  return -1;
+}
+
+function oaPrev() {
+  if (oaRunning || oaStep === 0) return;
+  const target = oaStep - 1;
+  oaTable = new Array(OA_SIZE).fill(null);
+  oaInitUI();
+  const log = document.getElementById('oa-log');
+  log.innerHTML = '';
+  oaCurrentGroup = null;
+  for (let i = 0; i < target; i++) {
+    const idx = oaInsertSilent(OA_SEQ[i]);
+    document.getElementById('oas' + i).className = 'seq-item done';
+    oaLogHeader(`Inserted key = ${OA_SEQ[i]}`);
+    oaLogLine(`  placed at index ${idx}`, 'log-insert');
+  }
+  oaStep = target;
+  oaRefreshTable();
+  if (oaStep === 0) {
+    const hint = document.createElement('div');
+    hint.style.color = 'var(--muted)';
+    hint.textContent = 'Press "Next Insert" to start...';
+    log.appendChild(hint);
+  }
+}
+
+async function oaAuto() {
+  while (oaStep < OA_SEQ.length) { await oaNext(); await sleep(200); }
+}
+
+function oaReset() {
+  oaTable = new Array(OA_SIZE).fill(null);
+  oaStep = 0; oaRunning = false; oaCurrentGroup = null;
+  oaInitUI();
+  const el = document.getElementById('oa-log');
+  el.innerHTML = '';
+  const hint = document.createElement('div');
+  hint.style.color = 'var(--muted)';
+  hint.textContent = 'Press "Next Insert" to start...';
+  el.appendChild(hint);
+}
+
+oaInitUI();
+
+// ═══════════════════ SEPARATE CHAINING ═══════════════════
+let scChains = Array.from({length: OA_SIZE}, () => []);
+let scStep = 0;
+let scRunning = false;
+let scCurrentGroup = null;
+
+function scInitUI() {
+  const seq = document.getElementById('sc-seq');
+  seq.innerHTML = SC_SEQ.map((v, i) => `<div class="seq-item" id="scs${i}">${v}</div>`).join('');
+  scRenderTable();
+}
+
+function scRenderTable() {
+  const tbl = document.getElementById('sc-table');
+  tbl.innerHTML = Array.from({length: OA_SIZE}, (_, i) => {
+    const chain = scChains[i];
+    const headVal = chain.length > 0 ? chain[0] : null;
+    let nodes = '';
+    for (let j = 1; j < chain.length; j++) {
+      nodes += `<div class="sc-arrow">→</div><div class="sc-node">${chain[j]}</div>`;
+    }
+    return `<div class="sc-row">
+      <div class="ri">${i}</div>
+      <div class="sc-head ${headVal !== null ? 'has-item' : ''}" id="sch${i}">${headVal !== null ? headVal : '—'}</div>
+      <div class="sc-chain" id="scc${i}">${nodes}</div>
+    </div>`;
+  }).join('');
+}
+
+function scLogHeader(msg) {
+  const el = document.getElementById('sc-log');
+  scCurrentGroup = document.createElement('div');
+  scCurrentGroup.className = 'log-group';
+  scCurrentGroup.innerHTML = `<div class="log-header">${msg}</div>`;
+  el.appendChild(scCurrentGroup);
+  el.scrollTop = el.scrollHeight;
+}
+
+function scLogLine(msg, cls) {
+  const el = document.getElementById('sc-log');
+  const line = document.createElement('div');
+  line.className = cls || '';
+  line.textContent = msg;
+  (scCurrentGroup || el).appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function scNext() {
+  if (scRunning) return;
+  if (scStep >= SC_SEQ.length) { scLogLine('✓ All elements inserted.', 'log-done'); return; }
+  scRunning = true;
+  const key = SC_SEQ[scStep];
+  const idx = key % OA_SIZE;
+  document.getElementById('scs' + scStep).className = 'seq-item current';
+
+  scLogHeader(`Inserting key = ${key}  →  h(${key}) = ${idx}`);
+
+  const headEl = document.getElementById('sch' + idx);
+  headEl.classList.add('inserting');
+  if (scChains[idx].length === 0) {
+    scLogLine(`  Slot [${idx}] is empty → insert as head`, 'log-insert');
+  } else {
+    scLogLine(`  Slot [${idx}] has chain [${scChains[idx].join(' → ')}] → append`, 'log-collision');
+  }
+  await sleep(500);
+  scChains[idx].push(key);
+  scRenderTable();
+  await sleep(300);
+  document.getElementById('scs' + scStep).className = 'seq-item done';
+  scStep++;
+  scRunning = false;
+}
+
+function scPrev() {
+  if (scRunning || scStep === 0) return;
+  const target = scStep - 1;
+  scChains = Array.from({length: OA_SIZE}, () => []);
+  scInitUI();
+  const log = document.getElementById('sc-log');
+  log.innerHTML = '';
+  scCurrentGroup = null;
+  for (let i = 0; i < target; i++) {
+    const key = SC_SEQ[i];
+    const idx = key % OA_SIZE;
+    scChains[idx].push(key);
+    document.getElementById('scs' + i).className = 'seq-item done';
+    scLogHeader(`Inserted key = ${key}  →  h(${key}) = ${idx}`);
+  }
+  scStep = target;
+  scRenderTable();
+  if (scStep === 0) {
+    const hint = document.createElement('div');
+    hint.style.color = 'var(--muted)';
+    hint.textContent = 'Press "Next Insert" to start...';
+    log.appendChild(hint);
+  }
+}
+
+async function scAuto() {
+  while (scStep < SC_SEQ.length) { await scNext(); await sleep(250); }
+}
+
+function scReset() {
+  scChains = Array.from({length: OA_SIZE}, () => []);
+  scStep = 0; scRunning = false; scCurrentGroup = null;
+  scInitUI();
+  const el = document.getElementById('sc-log');
+  el.innerHTML = '';
+  const hint = document.createElement('div');
+  hint.style.color = 'var(--muted)';
+  hint.textContent = 'Press "Next Insert" to start...';
+  el.appendChild(hint);
+}
+
+scInitUI();
+
+// ═══════════════════ LOAD FACTOR ═══════════════════
+function lfUpdate() {
+  const size = parseInt(document.getElementById('lf-size').value);
+  const elem = Math.min(parseInt(document.getElementById('lf-elem').value), size);
+  document.getElementById('lf-size-val').textContent = size;
+  document.getElementById('lf-elem-val').textContent = elem;
+  document.getElementById('lf-elem').max = size;
+
+  const lf = elem / size;
+  const pct = Math.min(lf * 100, 100);
+  const bar = document.getElementById('lf-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = lf >= 0.75
+    ? 'linear-gradient(90deg, #ff9800, var(--accent2))'
+    : 'linear-gradient(90deg, var(--accent3), var(--accent))';
+  bar.textContent = `λ = ${lf.toFixed(2)}`;
+
+  const status = document.getElementById('lf-status');
+  if (lf >= 0.75) {
+    status.innerHTML = `<span style="color:var(--accent2)">⚠ Load factor ≥ 0.75 — Rehash / resize the table! (${elem}/${size})</span>`;
+  } else {
+    status.innerHTML = `<span style="color:var(--accent3)">✓ Load factor is acceptable (${elem}/${size})</span>`;
+  }
+}
+
+lfUpdate();
+
+// Set default OA tech fn display
+setTech('lp');
+</script>
+</body>
+</html>

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kruskal's Algorithm</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --panel: #13161e;
+    --border: #1e2330;
+    --accent: #00e5a0;
+    --accent2: #ff6b35;
+    --text: #cdd6f4;
+    --muted: #585f7a;
+    --edge-default: #2a3050;
+    --edge-active: #00e5a0;
+    --node-bg: #1a1f2e;
+    --node-border: #3a4060;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav.page-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.page-nav span {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--accent);
+    margin-right: 20px;
+    letter-spacing: -0.5px;
+  }
+  .nav-btn {
+    padding: 7px 18px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .nav-btn:hover, .nav-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,160,0.07);
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 28px; }
+  .page.active { display: block; }
+
+  /* HOME */
+  #home {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 53px);
+    text-align: center;
+    gap: 16px;
+  }
+  #home.active { display: flex; }
+  #home h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  #home p { color: var(--muted); font-size: 0.85rem; max-width: 400px; }
+
+  /* INTRO PAGE */
+  .intro-header {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .intro-sub {
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-bottom: 24px;
+    max-width: 700px;
+    line-height: 1.7;
+    border-left: 2px solid var(--accent);
+    padding-left: 12px;
+  }
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .graph-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 10px 10px;
+    text-align: center;
+  }
+  .graph-card h4 {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .graph-card.highlight { border-color: rgba(0,229,160,0.3); }
+  .intro-actions { display: flex; justify-content: center; }
+  .btn-primary {
+    padding: 11px 28px;
+    background: var(--accent);
+    color: #0d0f14;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border-radius: 5px;
+    letter-spacing: 0.5px;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+
+  /* KRUSKAL PAGE */
+  .kruskal-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 16px;
+    height: calc(100vh - 110px);
+  }
+
+  /* EDGE LIST */
+  .edge-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+  }
+  .edge-panel h3 {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+  .edge-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 0.76rem;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    color: var(--muted);
+  }
+  .edge-item.current { border-color: var(--accent2); color: var(--accent2); background: rgba(255,107,53,0.07); }
+  .edge-item.added { color: var(--accent); border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.05); }
+  .edge-item.skipped { color: #555; text-decoration: line-through; }
+  .edge-weight { font-weight: 700; }
+
+  /* COST DISPLAY */
+  .cost-box {
+    margin-top: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .cost-box label { font-size: 0.65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .cost-value { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+
+  /* GRAPHS */
+  .graphs-col { display: flex; flex-direction: row; gap: 12px; }
+  .graph-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    height: calc(100vh - 110px);
+  }
+  .graph-panel h3 {
+    position: absolute;
+    top: 10px; left: 14px;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  svg { width: 100%; height: 100%; }
+
+  /* NODE */
+  .node circle { fill: var(--node-bg); stroke: var(--node-border); stroke-width: 2; transition: all 0.3s; }
+  .node text { fill: var(--text); font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .node.in-mst circle { stroke: var(--accent); stroke-width: 2.5; fill: rgba(0,229,160,0.1); }
+
+  /* EDGE SVG */
+  .graph-edge { stroke: var(--edge-default); stroke-width: 2; transition: all 0.4s; }
+  .graph-edge.in-mst { stroke: var(--accent); stroke-width: 3; }
+  .graph-edge.checking { stroke: var(--accent2); stroke-width: 3; }
+  .graph-edge.skipped { stroke: #a03010; stroke-width: 2.5; }
+  .edge-label { fill: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; text-anchor: middle; dominant-baseline: central; pointer-events: none; transition: fill 0.3s; }
+  .edge-label.in-mst { fill: var(--accent); }
+  .edge-label.checking { fill: var(--accent2); }
+  .edge-label.skipped { fill: #a03010; }
+
+  /* CONTROLS */
+  .controls {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .ctrl-btn {
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .status-msg {
+    font-size: 0.74rem;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .status-msg.ok { color: var(--accent); }
+  .status-msg.skip { color: var(--accent2); }
+  .status-msg.done { color: var(--text); font-weight: 700; }
+  
+  /* Intro SVG labels */
+  .intro-elabel { fill: #444; font-size: 10px; font-family: 'JetBrains Mono', monospace; text-anchor: middle; }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html" class="active">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<nav class="page-nav">
+  <span>KRUSKAL'S ALGO</span>
+  <button class="nav-btn active" onclick="showPage('intro')">Intro</button>
+  <button class="nav-btn" onclick="showPage('kruskal')">Kruskal's Algorithm</button>
+</nav>
+
+<!-- INTRO PAGE -->
+<div id="intro" class="page active">
+  <div class="intro-header">Spanning Trees</div>
+  <p class="intro-sub">
+    A spanning tree is a subset of Graph G, such that all the vertices are connected using minimum possible number of edges.
+    Hence, a spanning tree does not have cycles and a graph may have more than one spanning tree.
+  </p>
+  <div class="intro-grid">
+    <div class="graph-card highlight">
+      <h4>Original Graph</h4>
+      <svg viewBox="0 0 180 150" id="intro-main"></svg>
+    </div>
+    <div class="graph-card">
+      <h4>Spanning Tree 1</h4>
+      <svg viewBox="0 0 180 150" id="intro-st1"></svg>
+    </div>
+    <div class="graph-card">
+      <h4>Spanning Tree 2</h4>
+      <svg viewBox="0 0 180 150" id="intro-st2"></svg>
+    </div>
+    <div class="graph-card">
+      <h4>Spanning Tree 3</h4>
+      <svg viewBox="0 0 180 150" id="intro-st3"></svg>
+    </div>
+  </div>
+  <div class="intro-actions">
+    <button class="btn-primary" onclick="showPage('kruskal')">▶ Start Kruskal's Algorithm</button>
+  </div>
+</div>
+
+<!-- KRUSKAL PAGE -->
+<div id="kruskal" class="page">
+  <div class="controls">
+    <button class="ctrl-btn" id="btn-prev" onclick="prevStep()">← Step</button>
+    <button class="ctrl-btn" id="btn-step" onclick="step()">Step →</button>
+    <button class="ctrl-btn" id="btn-auto" onclick="toggleAuto()">Auto Play</button>
+    <button class="ctrl-btn" onclick="resetKruskal()">Reset</button>
+    <span class="status-msg" id="status-msg">Press Step or Auto Play</span>
+  </div>
+  <div class="kruskal-layout">
+    <div class="edge-panel">
+      <h3>Sorted Edges</h3>
+      <div id="edge-list"></div>
+      <div class="cost-box">
+        <label>MST Cost</label>
+        <div class="cost-value" id="cost-display">0</div>
+      </div>
+    </div>
+    <div class="graphs-col">
+      <div class="graph-panel">
+        <h3>Original Graph</h3>
+        <svg id="main-svg" viewBox="0 0 600 260"></svg>
+      </div>
+      <div class="graph-panel">
+        <h3>MST (Building...)</h3>
+        <svg id="mst-svg" viewBox="0 0 600 260"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── GRAPH DATA ───────────────────────────────────────────────
+const NODES = ['A','B','C','D','E','F','G'];
+const NODE_POS = {
+  A: [100,  50],  B: [200, 50],  C: [450, 50],
+  D: [550, 80],   E: [300, 130], F: [500, 210],
+  G: [100, 210]
+};
+// Edges with specified weights
+const EDGES = [
+  ['A','G', 1], ['B','G', 2], ['B','E', 3], ['C','E', 4],
+  ['C','F', 5], ['A','B', 6], ['B','C', 7], ['F','E', 8],
+  ['F','G', 9], ['G','E', 10], ['C','D', 11], ['D','F', 12]
+];
+
+// ─── PAGE SWITCH ──────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const idx = id === 'intro' ? 0 : 1;
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  if (id === 'kruskal') initKruskal();
+}
+
+// ─── INTRO GRAPHS ─────────────────────────────────────────────
+const introNodes = ['A','B','C','D','E'];
+const introPts = { A:[90,30], B:[170,30], C:[170,120], D:[90,120], E:[130,75] };
+const introEdges  = [['A','B'],['B','C'],['C','D'],['D','A'],['A','E'],['B','E'],['C','E'],['D','E']];
+const introSTs = [
+  [['A','B'],['B','C'],['C','D'],['D','E']],
+  [['A','B'],['B','E'],['E','C'],['E','D']],
+  [['A','D'],['D','C'],['C','B'],['B','E']]
+];
+
+function drawIntroGraph(svgId, highlightEdges) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const isMain = highlightEdges === null;
+  const edgeSet = highlightEdges ? new Set(highlightEdges.map(e => e[0]+'-'+e[1])) : null;
+
+  function addEdge(a, b, hi) {
+    const [x1,y1] = introPts[a], [x2,y2] = introPts[b];
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', x1+5); line.setAttribute('y1', y1+5);
+    line.setAttribute('x2', x2+5); line.setAttribute('y2', y2+5);
+    line.setAttribute('stroke', hi ? '#00e5a0' : (isMain ? '#2a3050' : '#1e2330'));
+    line.setAttribute('stroke-width', hi ? 2.5 : 1.5);
+    svg.appendChild(line);
+  }
+
+  introEdges.forEach(([a,b]) => {
+    const key1 = a+'-'+b, key2 = b+'-'+a;
+    const hi = isMain ? false : (edgeSet.has(key1)||edgeSet.has(key2));
+    addEdge(a, b, hi);
+  });
+
+  Object.entries(introPts).forEach(([n,[x,y]]) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', x+5); c.setAttribute('cy', y+5); c.setAttribute('r', 12);
+    c.setAttribute('fill', '#13161e');
+    c.setAttribute('stroke', isMain ? '#3a4060' : '#2a3050');
+    c.setAttribute('stroke-width', '1.5');
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', x+5); t.setAttribute('y', y+5);
+    t.setAttribute('fill', '#cdd6f4'); t.setAttribute('font-size', '10');
+    t.setAttribute('font-family', 'Syne,sans-serif'); t.setAttribute('font-weight', '700');
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central');
+    t.textContent = n;
+    g.appendChild(c); g.appendChild(t); svg.appendChild(g);
+  });
+}
+
+drawIntroGraph('intro-main', null);
+drawIntroGraph('intro-st1', introSTs[0]);
+drawIntroGraph('intro-st2', introSTs[1]);
+drawIntroGraph('intro-st3', introSTs[2]);
+
+// ─── KRUSKAL ──────────────────────────────────────────────────
+let sortedEdges = [], stepIdx = 0, mstEdges = [], skippedEdges = [], mstCost = 0;
+let parent = {}, ufRank = {}, autoTimer = null, edgeState = [];
+
+function find(x) { if (parent[x] !== x) parent[x] = find(parent[x]); return parent[x]; }
+function union(x, y) {
+  const rx = find(x), ry = find(y);
+  if (rx === ry) return false;
+  if (ufRank[rx] < ufRank[ry]) parent[rx] = ry;
+  else if (ufRank[rx] > ufRank[ry]) parent[ry] = rx;
+  else { parent[ry] = rx; ufRank[rx]++; }
+  return true;
+}
+
+function initKruskal() {
+  sortedEdges = [...EDGES].sort((a,b) => a[2]-b[2]);
+  stepIdx = 0; mstEdges = []; skippedEdges = []; mstCost = 0; edgeState = [];
+  parent = {}; ufRank = {};
+  NODES.forEach(n => { parent[n] = n; ufRank[n] = 0; });
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('btn-auto').textContent = 'Auto Play'; }
+  renderEdgeList(-1, []);
+  document.getElementById('cost-display').textContent = '0';
+  document.getElementById('status-msg').textContent = 'Press Step or Auto Play';
+  document.getElementById('status-msg').className = 'status-msg';
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('btn-prev').disabled = true;
+  document.querySelector('#kruskal .graph-panel:last-child h3').textContent = 'MST (Building...)';
+  renderMainGraph([], null, []);
+  renderMSTGraph([]);
+}
+
+function renderEdgeList(currentIdx, processed) {
+  const el = document.getElementById('edge-list');
+  el.innerHTML = '';
+  sortedEdges.forEach(([a,b,w], i) => {
+    const div = document.createElement('div');
+    div.className = 'edge-item';
+    if (i === currentIdx) div.classList.add('current');
+    else if (processed[i] === 'added') div.classList.add('added');
+    else if (processed[i] === 'skipped') div.classList.add('skipped');
+    div.innerHTML = `<span>${a} — ${b}</span><span class="edge-weight">${w}</span>`;
+    el.appendChild(div);
+  });
+}
+
+function step() {
+  if (stepIdx >= sortedEdges.length) { finishKruskal(); return; }
+  const [a, b, w] = sortedEdges[stepIdx];
+  const canAdd = union(a, b);
+  if (canAdd) {
+    mstEdges.push([a,b,w]);
+    mstCost += w;
+    edgeState[stepIdx] = 'added';
+    document.getElementById('cost-display').textContent = mstCost;
+    setStatus(`✓ Added ${a}–${b}  (w=${w})`, 'ok');
+    // Check if MST is complete (n-1 edges for n nodes)
+    if (mstEdges.length === NODES.length - 1) {
+      stepIdx++;
+      renderEdgeList(-1, edgeState);
+      renderMainGraph(mstEdges, [a,b], skippedEdges);
+      renderMSTGraph(mstEdges);
+      finishKruskal();
+      return;
+    }
+  } else {
+    skippedEdges.push([a,b]);
+    edgeState[stepIdx] = 'skipped';
+    setStatus(`✗ Skipped ${a}–${b}  — creates cycle!`, 'skip');
+  }
+  stepIdx++;
+  renderEdgeList(stepIdx < sortedEdges.length ? stepIdx : -1, edgeState);
+  renderMainGraph(mstEdges, [a,b], skippedEdges);
+  renderMSTGraph(mstEdges);
+  document.getElementById('btn-prev').disabled = stepIdx === 0;
+  if (stepIdx >= sortedEdges.length) { finishKruskal(); }
+}
+
+function prevStep() {
+  if (stepIdx === 0) return;
+  const target = stepIdx - 1;
+  initKruskal();
+  for (let i = 0; i < target; i++) step();
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('btn-prev').disabled = stepIdx === 0;
+  if (target === 0) setStatus('Press Step or Auto Play', '');
+}
+
+function finishKruskal() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('btn-auto').textContent = 'Auto Play'; }
+  document.getElementById('btn-step').disabled = true;
+  document.getElementById('btn-prev').disabled = stepIdx === 0;
+  setStatus(`✓ MST complete — Cost: ${mstCost}`, 'done');
+  renderEdgeList(-1, edgeState);
+  document.querySelector('#kruskal .graph-panel:last-child h3').textContent = `MST — Total Cost: ${mstCost}`;
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg; el.className = 'status-msg ' + (cls||'');
+}
+
+function toggleAuto() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('btn-auto').textContent = 'Auto Play'; }
+  else {
+    document.getElementById('btn-auto').textContent = 'Pause';
+    autoTimer = setInterval(() => {
+      if (stepIdx >= sortedEdges.length) { finishKruskal(); }
+      else step();
+    }, 900);
+  }
+}
+
+function resetKruskal() {
+  parent = {}; edgeState = [];
+  NODES.forEach(n => parent[n] = n);
+  initKruskal();
+}
+
+// ─── SVG RENDERING ────────────────────────────────────────────
+function renderGraph(svgId, highlightEdges, checkingEdge, skippedEdgesList) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const hiSet = new Set(highlightEdges.map(([a,b]) => [a,b].sort().join('-')));
+  const skipSet = new Set((skippedEdgesList||[]).map(([a,b]) => [a,b].sort().join('-')));
+  const checkKey = checkingEdge ? checkingEdge.slice().sort().join('-') : null;
+
+  // edges
+  EDGES.forEach(([a,b,w]) => {
+    const key = [a,b].sort().join('-');
+    const inMST = hiSet.has(key);
+    const isSkipped = skipSet.has(key);
+    const isChecking = checkKey === key;
+    const [x1,y1] = NODE_POS[a], [x2,y2] = NODE_POS[b];
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    const dx = y2-y1, dy = x1-x2, len = Math.sqrt(dx*dx+dy*dy);
+    const ox = dx/len*12, oy = dy/len*12;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    let cls = 'graph-edge';
+    if (inMST) cls += ' in-mst';
+    else if (isChecking) cls += ' checking';
+    else if (isSkipped) cls += ' skipped';
+    line.setAttribute('class', cls);
+    svg.appendChild(line);
+
+    const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    bg.setAttribute('x', mx+ox-9); bg.setAttribute('y', my+oy-8);
+    bg.setAttribute('width',18); bg.setAttribute('height',16); bg.setAttribute('rx',3);
+    bg.setAttribute('fill','#0d0f14'); bg.setAttribute('opacity','0.85');
+    svg.appendChild(bg);
+
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', mx+ox); lbl.setAttribute('y', my+oy);
+    let lcls = 'edge-label';
+    if (inMST) lcls += ' in-mst';
+    else if (isChecking) lcls += ' checking';
+    else if (isSkipped) lcls += ' skipped';
+    lbl.setAttribute('class', lcls);
+    lbl.textContent = w; svg.appendChild(lbl);
+  });
+
+  // nodes
+  NODES.forEach(n => {
+    const [x,y] = NODE_POS[n];
+    const inMST = mstEdges.some(([a,b]) => a===n||b===n);
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node'+(inMST?' in-mst':''));
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',18);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x); t.setAttribute('y',y); t.textContent = n;
+    g.appendChild(c); g.appendChild(t); svg.appendChild(g);
+  });
+}
+
+function renderMSTGraph(mstEdgeList) {
+  const svg = document.getElementById('mst-svg');
+  svg.innerHTML = '';
+  const mstSet = new Set(mstEdgeList.map(([a,b]) => [a,b].sort().join('-')));
+
+  // draw all edges dim
+  EDGES.forEach(([a,b,w]) => {
+    const key = [a,b].sort().join('-');
+    const inMST = mstSet.has(key);
+    if (!inMST) return;
+    const [x1,y1] = NODE_POS[a], [x2,y2] = NODE_POS[b];
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    const dx = y2-y1, dy = x1-x2, len = Math.sqrt(dx*dx+dy*dy);
+    const ox = dx/len*12, oy = dy/len*12;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('class','graph-edge in-mst'); svg.appendChild(line);
+    const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    bg.setAttribute('x', mx+ox-9); bg.setAttribute('y', my+oy-8);
+    bg.setAttribute('width',18); bg.setAttribute('height',16); bg.setAttribute('rx',3);
+    bg.setAttribute('fill','#0d0f14'); bg.setAttribute('opacity','0.85'); svg.appendChild(bg);
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', mx+ox); lbl.setAttribute('y', my+oy);
+    lbl.setAttribute('class','edge-label in-mst'); lbl.textContent = w; svg.appendChild(lbl);
+  });
+
+  // nodes
+  const inMSTNodes = new Set();
+  mstEdgeList.forEach(([a,b]) => { inMSTNodes.add(a); inMSTNodes.add(b); });
+  NODES.forEach(n => {
+    const [x,y] = NODE_POS[n];
+    const active = inMSTNodes.has(n);
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node'+(active?' in-mst':''));
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',18);
+    if (!active) { c.setAttribute('stroke','#1e2330'); c.setAttribute('fill','#0d0f14'); c.style.opacity='0.4'; }
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x); t.setAttribute('y',y); t.textContent = n;
+    if (!active) t.style.opacity='0.3';
+    g.appendChild(c); g.appendChild(t); svg.appendChild(g);
+  });
+}
+
+function renderMainGraph(mstList, checking, skipped) {
+  renderGraph('main-svg', mstList, checking, skipped||[]);
+}
+
+// Boot
+initKruskal();
+renderEdgeList(-1, []);
+renderMainGraph([], null);
+renderMSTGraph([]);
+</script>
+</body>
+</html>

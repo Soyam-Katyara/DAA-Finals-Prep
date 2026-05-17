@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Red-Black Tree Visualizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --border: #2a2a30;
+    --red-node: #e63946;
+    --black-node: #1a1a2e;
+    --black-node-border: #4a4a6a;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --accent: #e63946;
+    --green: #2ec4b6;
+    --step-bg: #1e1e26;
+  }
+
+  html, body {
+    width: 100%; height: 100vh; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'Syne', sans-serif;
+  }
+
+  body { display: flex; flex-direction: column; }
+
+  #app { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+  /* NAV */
+  #app > nav {
+    display: flex; gap: 4px; padding: 10px 14px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #app > nav button {
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    padding: 7px 16px; border: 1px solid var(--border); border-radius: 6px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: all 0.2s; letter-spacing: 0.5px;
+  }
+  #app > nav button.active, #app > nav button:hover {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+
+  /* PAGES */
+  .page { display: none; flex: 1; overflow: hidden; min-height: 0; }
+  .page.active { display: flex; flex-direction: column; }
+  .page.active.tree-page { flex-direction: row; }
+
+  /* INTRO */
+  #intro-page {
+    padding: 28px 40px; gap: 20px; justify-content: center;
+  }
+  #intro-page h1 {
+    font-size: 26px; font-weight: 800; color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  #intro-page .desc {
+    font-size: 13px; line-height: 1.7; color: var(--muted); max-width: 680px;
+  }
+  #intro-page .props { display: flex; flex-direction: column; gap: 10px; max-width: 700px; }
+  #intro-page .prop {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px;
+  }
+  #intro-page .prop-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    color: var(--accent); background: rgba(230,57,70,0.12); border-radius: 4px;
+    padding: 2px 7px; flex-shrink: 0; margin-top: 1px;
+  }
+  #intro-page .prop-text { font-size: 13px; line-height: 1.6; color: var(--text); }
+  #intro-page .prop-text b { color: var(--accent); }
+
+  /* LEFT PANEL */
+  .left-panel {
+    width: 200px; flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 12px; gap: 8px; overflow: hidden;
+  }
+  .left-panel h3 {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .sequence-list {
+    display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1;
+  }
+  .seq-item {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    padding: 5px 8px; border-radius: 5px; border: 1px solid transparent;
+    transition: all 0.3s;
+  }
+  .seq-item.done { color: var(--muted); }
+  .seq-item.current {
+    background: rgba(230,57,70,0.15); border-color: var(--accent); color: var(--accent);
+  }
+  .seq-item.pending { color: var(--text); }
+  .seq-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .seq-item.done .seq-dot { background: var(--muted); }
+  .seq-item.current .seq-dot { background: var(--accent); }
+  .seq-item.pending .seq-dot { background: var(--border); }
+
+  .ctrl-btn {
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    padding: 8px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--step-bg); color: var(--text);
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ctrl-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .step-log {
+    background: var(--step-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--green); line-height: 1.6;
+    max-height: 120px; overflow-y: auto; flex-shrink: 0; margin-bottom: 4px;
+  }
+  .custom-box {
+    border-top: 1px solid var(--border); padding-top: 8px;
+    display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+  }
+  .custom-box label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .custom-box input {
+    width: 100%; border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); border-radius: 5px; padding: 7px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+
+  /* CANVAS */
+  .canvas-area {
+    flex: 1; position: relative; overflow: hidden; min-width: 0; min-height: 0; border-radius: 0;
+  }
+  #ins-canvas, #del-canvas {
+    position: absolute; top: 0; left: 0; display: block;
+  }
+
+  /* ANIMATED NODES overlay */
+  .tree-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .anim-node {
+    position: absolute; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    pointer-events: none;
+    transition: left 0.6s cubic-bezier(0.4,0,0.2,1),
+                top 0.6s cubic-bezier(0.4,0,0.2,1),
+                background 0.4s ease,
+                border-color 0.4s ease,
+                opacity 0.4s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+  .anim-node.red-col {
+    background: var(--red-node); border: 2px solid #ff6b7a; color: #fff;
+  }
+  .anim-node.black-col {
+    background: var(--black-node); border: 2px solid var(--black-node-border); color: #ccc;
+  }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  }
+  .info-section {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 12px 16px; overflow-y: auto; flex-shrink: 0; max-height: 200px;
+    font-size: 11px; line-height: 1.7; color: var(--text);
+  }
+  .info-section ol, .info-section li { margin-left: 14px; margin-bottom: 6px; }
+  .info-section li { margin-bottom: 8px; }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html" class="active">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html">Pseudocodes</a>
+</nav>
+
+<div id="app">
+  <nav>
+    <button class="active" onclick="showPage('intro')">Intro</button>
+    <button onclick="showPage('insert')">Insertion in Red Black Tree</button>
+    <button onclick="showPage('delete')">Deletion in Red Black Tree</button>
+  </nav>
+
+  <!-- INTRO -->
+  <div id="intro-page" class="page active">
+    <h1>Red-Black Tree</h1>
+    <p class="desc">A Red-Black Tree is a self-balancing BST. Each node has an additional attribute: a color, which can be either red or black. These colors are used to maintain balance during insertions and deletions, ensuring efficient data retrieval and manipulation.</p>
+    <div class="props">
+      <div class="prop"><span class="prop-num">P1</span><span class="prop-text"><b>Node Color:</b> Each node is either red or black.</span></div>
+      <div class="prop"><span class="prop-num">P2</span><span class="prop-text"><b>Root Property:</b> The root of the tree is always black.</span></div>
+      <div class="prop"><span class="prop-num">P3</span><span class="prop-text"><b>Red Node Property:</b> Red nodes cannot have red children (Red nodes cannot be adjacent).</span></div>
+      <div class="prop"><span class="prop-num">P4</span><span class="prop-text"><b>Black Node Property:</b> Every path from a node to its descendant leaves must have the same number of black nodes.</span></div>
+      <div class="prop"><span class="prop-num">P5</span><span class="prop-text"><b>Leaf Property:</b> All leaves (NIL nodes) are black.</span></div>
+    </div>
+  </div>
+
+  <!-- INSERT PAGE -->
+  <div id="insert-page" class="page tree-page">
+    <div class="left-panel">
+      <h3>Insert Sequence</h3>
+      <div class="sequence-list" id="ins-seq-list"></div>
+      <div class="step-log" id="ins-log">Ready.</div>
+      <button class="ctrl-btn" id="ins-prev-btn" onclick="insPrevStep()">◀ Prev Step</button>
+      <button class="ctrl-btn" id="ins-next-btn" onclick="insNextStep()">Next Step ▶</button>
+      <button class="ctrl-btn" onclick="resetInsert()">↺ Reset</button>
+      <div class="custom-box">
+        <label for="ins-custom">Custom Insertion</label>
+        <input id="ins-custom" type="text" placeholder="10, 20, 30">
+        <button class="ctrl-btn" onclick="applyCustomInsert()">Use Sequence</button>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="canvas-area">
+        <canvas id="ins-canvas"></canvas>
+        <div class="tree-overlay" id="ins-overlay"></div>
+      </div>
+      <div class="info-section">
+        <strong>Red-Black Tree Insertion</strong>
+        <ol>
+          <li><strong>Initial Insertion:</strong> Add your new node (x) just like you would in a standard Binary Search Tree and color it RED.</li>
+          <li><strong>The Root Rule:</strong> If x is the very first node in the tree (the root), simply change its color to BLACK and you are done.</li>
+          <li><strong>Check for Red-Red Violations:</strong> If x's parent is also RED, the rules are broken. You must fix the tree by looking at the color of x's "uncle" (the parent's sibling).</li>
+          <li><strong>The Fix: If the Uncle is RED:</strong> Change both the parent and the uncle to BLACK, and change the grandparent to RED. Because the grandparent might now cause a new violation higher up, treat the grandparent as your new x and repeat the rules from step 2.</li>
+          <li><strong>The Fix: If the Uncle is BLACK (or missing):</strong> You need to physically rotate the nodes to balance the tree. The type of rotation depends on the "shape" formed by x, its parent, and its grandparent.</li>
+          <li><strong>Rotating and Recoloring:</strong> For a "Straight Line" shape (Left-Left or Right-Right alignment), perform a single rotation and swap the colors of the parent and grandparent. For a "Zig-Zag" shape (Left-Right or Right-Left alignment), perform a double rotation and swap the colors of x and the grandparent.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE PAGE -->
+  <div id="delete-page" class="page tree-page">
+    <div class="left-panel">
+      <h3>Delete Sequence</h3>
+      <div class="sequence-list" id="del-seq-list"></div>
+      <div class="step-log" id="del-log">Ready.</div>
+      <button class="ctrl-btn" id="del-prev-btn" onclick="delPrevStep()">◀ Prev Step</button>
+      <button class="ctrl-btn" id="del-next-btn" onclick="delNextStep()">Next Step ▶</button>
+      <button class="ctrl-btn" onclick="resetDelete()">↺ Reset</button>
+      <div class="custom-box">
+        <label for="del-custom">Custom Deletion</label>
+        <input id="del-custom" type="text" placeholder="15, 5, 10, 12">
+        <button class="ctrl-btn" onclick="applyCustomDelete()">Use Sequence</button>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="canvas-area">
+        <canvas id="del-canvas"></canvas>
+        <div class="tree-overlay" id="del-overlay"></div>
+      </div>
+      <div class="info-section">
+        <strong>Red-Black Tree Deletion</strong>
+        <ol>
+          <li><strong>Case 1: Node to delete is RED.</strong> Remove it directly because no black-height rule is broken.</li>
+          <li><strong>Case 2: Node to delete is BLACK with a RED child.</strong> Replace it with the child and recolor that child BLACK.</li>
+          <li><strong>Case 3: Node to delete is BLACK with a BLACK child.</strong> This creates the double-black problem.</li>
+          <li><strong>Case 3a: Sibling is RED.</strong> Recolor sibling and parent, then rotate around the parent to convert the problem into a black-sibling case.</li>
+          <li><strong>Case 3b: Sibling is BLACK with two BLACK children.</strong> Recolor sibling RED and move the double black upward.</li>
+          <li><strong>Case 3c: Sibling is BLACK, far child BLACK, near child RED.</strong> Recolor and rotate around the sibling to transform into Case 3d.</li>
+          <li><strong>Case 3d: Sibling is BLACK with far child RED.</strong> Recolor sibling/parent/far child, rotate around the parent, and finish the fix.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── PAGE NAV ───────────────────────────────────────────────────────────────
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#app > nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById(p === 'intro' ? 'intro-page' : p === 'insert' ? 'insert-page' : 'delete-page').classList.add('active');
+  event.target.classList.add('active');
+  if (p === 'insert') { setTimeout(renderInsTree, 50); }
+  if (p === 'delete') { setTimeout(renderDelTree, 50); }
+}
+
+// ─── RBT NODE ───────────────────────────────────────────────────────────────
+class RBNode {
+  constructor(val) {
+    this.val = val; this.color = 'RED';
+    this.left = null; this.right = null; this.parent = null;
+  }
+}
+
+// ─── RBT ────────────────────────────────────────────────────────────────────
+class RBTree {
+  constructor() { this.root = null; }
+
+  insert(val) {
+    const z = new RBNode(val);
+    if (!this.root) { this.root = z; z.color = 'BLACK'; return [{ type:'insert', node:val }, { type:'color', node:val, color:'BLACK', reason:'Root must be black' }]; }
+    let steps = [{ type:'insert', node:val }];
+    // BST insert
+    let y = null, x = this.root;
+    while (x) { y = x; x = val < x.val ? x.left : x.right; }
+    z.parent = y;
+    if (val < y.val) y.left = z; else y.right = z;
+    // fixup
+    steps = steps.concat(this._fixInsert(z));
+    return steps;
+  }
+
+  _fixInsert(z) {
+    let steps = [];
+    while (z.parent && z.parent.color === 'RED') {
+      const p = z.parent, g = p.parent;
+      if (!g) break;
+      if (p === g.left) {
+        const u = g.right;
+        if (u && u.color === 'RED') {
+          // Case 1: uncle red
+          p.color = 'BLACK'; u.color = 'BLACK'; g.color = 'RED';
+          steps.push({ type:'recolor', nodes:[p.val, u.val, g.val], colors:['BLACK','BLACK','RED'], reason:`Uncle red: recolor parent(${p.val})→BLACK, uncle(${u.val})→BLACK, gp(${g.val})→RED` });
+          z = g;
+        } else {
+          if (z === p.right) {
+            // Case 2: LR → rotate left on parent → becomes LL
+            steps.push({ type:'rotate', dir:'left', pivot:p.val, reason:`LR case: rotate left on ${p.val}` });
+            this._rotateLeft(p); z = p; // z is now the old parent
+          }
+          // Case 3: LL
+          const pp = z.parent, gg = pp.parent;
+          const oldPColor = pp.color, oldGColor = gg.color;
+          pp.color = 'BLACK'; gg.color = 'RED';
+          steps.push({ type:'recolor', nodes:[pp.val, gg.val], colors:['BLACK','RED'], reason:`LL case: swap colors gp(${gg.val})→RED, p(${pp.val})→BLACK` });
+          steps.push({ type:'rotate', dir:'right', pivot:gg.val, reason:`LL case: rotate right on ${gg.val}` });
+          this._rotateRight(gg);
+        }
+      } else {
+        const u = g.left;
+        if (u && u.color === 'RED') {
+          p.color = 'BLACK'; u.color = 'BLACK'; g.color = 'RED';
+          steps.push({ type:'recolor', nodes:[p.val, u.val, g.val], colors:['BLACK','BLACK','RED'], reason:`Uncle red: recolor parent(${p.val})→BLACK, uncle(${u.val})→BLACK, gp(${g.val})→RED` });
+          z = g;
+        } else {
+          if (z === p.left) {
+            steps.push({ type:'rotate', dir:'right', pivot:p.val, reason:`RL case: rotate right on ${p.val}` });
+            this._rotateRight(p); z = p;
+          }
+          const pp = z.parent, gg = pp.parent;
+          pp.color = 'BLACK'; gg.color = 'RED';
+          steps.push({ type:'recolor', nodes:[pp.val, gg.val], colors:['BLACK','RED'], reason:`RR case: swap colors gp(${gg.val})→RED, p(${pp.val})→BLACK` });
+          steps.push({ type:'rotate', dir:'left', pivot:gg.val, reason:`RR case: rotate left on ${gg.val}` });
+          this._rotateLeft(gg);
+        }
+      }
+    }
+    this.root.color = 'BLACK';
+    return steps;
+  }
+
+  _rotateLeft(x) {
+    const y = x.right; x.right = y.left;
+    if (y.left) y.left.parent = x;
+    y.parent = x.parent;
+    if (!x.parent) this.root = y;
+    else if (x === x.parent.left) x.parent.left = y;
+    else x.parent.right = y;
+    y.left = x; x.parent = y;
+  }
+
+  _rotateRight(x) {
+    const y = x.left; x.left = y.right;
+    if (y.right) y.right.parent = x;
+    y.parent = x.parent;
+    if (!x.parent) this.root = y;
+    else if (x === x.parent.right) x.parent.right = y;
+    else x.parent.left = y;
+    y.right = x; x.parent = y;
+  }
+
+  delete(val) {
+    let steps = [{ type:'delete', node:val }];
+    const z = this._find(this.root, val);
+    if (!z) return steps;
+    steps = steps.concat(this._delete(z));
+    return steps;
+  }
+
+  _find(n, v) { if (!n) return null; if (n.val === v) return n; return v < n.val ? this._find(n.left, v) : this._find(n.right, v); }
+
+  _delete(z) {
+    let steps = [];
+    let y = z, yOrigColor = y.color, x, xParent;
+    if (!z.left) {
+      x = z.right; xParent = z.parent;
+      this._transplant(z, z.right);
+    } else if (!z.right) {
+      x = z.left; xParent = z.parent;
+      this._transplant(z, z.left);
+    } else {
+      y = this._min(z.right); yOrigColor = y.color;
+      x = y.right; xParent = y.parent;
+      if (y.parent === z) { if (x) x.parent = y; xParent = y; }
+      else { this._transplant(y, y.right); y.right = z.right; y.right.parent = y; xParent = y.parent; }
+      this._transplant(z, y);
+      y.left = z.left; y.left.parent = y;
+      y.color = z.color;
+      steps.push({ type:'recolor', nodes:[y.val], colors:[y.color], reason:`Replaced ${z.val} with successor ${y.val}` });
+    }
+    if (yOrigColor === 'RED') {
+      steps.push({ type:'case', reason:'Case 1: deleted node is RED, so no black-height fix is needed.' });
+    } else if (x && x.color === 'RED') {
+      x.color = 'BLACK';
+      steps.push({ type:'recolor', nodes:[x.val], colors:['BLACK'], reason:`Case 2: deleted BLACK node had RED child ${x.val}; replace it and recolor the child BLACK.` });
+    } else if (yOrigColor === 'BLACK') {
+      steps = steps.concat(this._fixDelete(x, xParent));
+    }
+    if (this.root) this.root.color = 'BLACK';
+    return steps;
+  }
+
+  _transplant(u, v) {
+    if (!u.parent) this.root = v;
+    else if (u === u.parent.left) u.parent.left = v;
+    else u.parent.right = v;
+    if (v) v.parent = u.parent;
+  }
+
+  _min(n) { while (n.left) n = n.left; return n; }
+
+  _fixDelete(x, xParent) {
+    let steps = [];
+    while (x !== this.root && (!x || x.color === 'BLACK')) {
+      if (!xParent) break;
+      if (x === xParent.left) {
+        let w = xParent.right;
+        if (w && w.color === 'RED') {
+          w.color = 'BLACK'; xParent.color = 'RED';
+          steps.push({ type:'recolor', nodes:[w.val, xParent.val], colors:['BLACK','RED'], reason:`Case 3a: sibling ${w.val} is RED. Recolor sibling BLACK and parent ${xParent.val} RED.` });
+          steps.push({ type:'rotate', dir:'left', pivot:xParent.val, reason:`Case 3a: rotate left on parent ${xParent.val}.` });
+          this._rotateLeft(xParent); w = xParent.right;
+        }
+        if ((!w) || ((!w.left || w.left.color==='BLACK') && (!w.right || w.right.color==='BLACK'))) {
+          if (w) { w.color = 'RED'; steps.push({ type:'recolor', nodes:[w.val], colors:['RED'], reason:`Case 3b: sibling ${w.val} is BLACK with two BLACK children. Recolor sibling RED and move double black up.` }); }
+          x = xParent; xParent = x.parent;
+        } else {
+          if (!w.right || w.right.color === 'BLACK') {
+            if (w.left) { w.left.color = 'BLACK'; steps.push({ type:'recolor', nodes:[w.left.val], colors:['BLACK'], reason:`Case 3c: near child ${w.left.val} becomes BLACK.` }); }
+            w.color = 'RED'; steps.push({ type:'recolor', nodes:[w.val], colors:['RED'], reason:`Case 3c: sibling ${w.val} becomes RED.` });
+            steps.push({ type:'rotate', dir:'right', pivot:w.val, reason:`Case 3c: rotate right on sibling ${w.val}.` });
+            this._rotateRight(w); w = xParent.right;
+          }
+          w.color = xParent.color;
+          xParent.color = 'BLACK'; if (w.right) w.right.color = 'BLACK';
+          steps.push({ type:'recolor', nodes:[w.val, xParent.val], colors:[w.color,'BLACK'], reason:`Case 3d: sibling ${w.val} has a RED far child. Recolor sibling, parent, and far child.` });
+          steps.push({ type:'rotate', dir:'left', pivot:xParent.val, reason:`Case 3d: rotate left on parent ${xParent.val}.` });
+          this._rotateLeft(xParent); x = this.root;
+        }
+      } else {
+        let w = xParent.left;
+        if (w && w.color === 'RED') {
+          w.color = 'BLACK'; xParent.color = 'RED';
+          steps.push({ type:'recolor', nodes:[w.val, xParent.val], colors:['BLACK','RED'], reason:`Case 3a: sibling ${w.val} is RED. Recolor sibling BLACK and parent ${xParent.val} RED.` });
+          steps.push({ type:'rotate', dir:'right', pivot:xParent.val, reason:`Case 3a: rotate right on parent ${xParent.val}.` });
+          this._rotateRight(xParent); w = xParent.left;
+        }
+        if ((!w) || ((!w.right || w.right.color==='BLACK') && (!w.left || w.left.color==='BLACK'))) {
+          if (w) { w.color = 'RED'; steps.push({ type:'recolor', nodes:[w.val], colors:['RED'], reason:`Case 3b: sibling ${w.val} is BLACK with two BLACK children. Recolor sibling RED and move double black up.` }); }
+          x = xParent; xParent = x.parent;
+        } else {
+          if (!w.left || w.left.color === 'BLACK') {
+            if (w.right) { w.right.color = 'BLACK'; steps.push({ type:'recolor', nodes:[w.right.val], colors:['BLACK'], reason:`Case 3c: near child ${w.right.val} becomes BLACK.` }); }
+            w.color = 'RED'; steps.push({ type:'recolor', nodes:[w.val], colors:['RED'], reason:`Case 3c: sibling ${w.val} becomes RED.` });
+            steps.push({ type:'rotate', dir:'left', pivot:w.val, reason:`Case 3c: rotate left on sibling ${w.val}.` });
+            this._rotateLeft(w); w = xParent.left;
+          }
+          w.color = xParent.color;
+          xParent.color = 'BLACK'; if (w.left) w.left.color = 'BLACK';
+          steps.push({ type:'recolor', nodes:[w.val, xParent.val], colors:[w.color,'BLACK'], reason:`Case 3d: sibling ${w.val} has a RED far child. Recolor sibling, parent, and far child.` });
+          steps.push({ type:'rotate', dir:'right', pivot:xParent.val, reason:`Case 3d: rotate right on parent ${xParent.val}.` });
+          this._rotateRight(xParent); x = this.root;
+        }
+      }
+    }
+    if (x) x.color = 'BLACK';
+    return steps;
+  }
+
+  // Returns a snapshot of current tree structure (positions computed separately)
+  snapshot() {
+    const nodes = [];
+    const traverse = (n) => {
+      if (!n) return;
+      nodes.push({ val: n.val, color: n.color, leftVal: n.left ? n.left.val : null, rightVal: n.right ? n.right.val : null });
+      traverse(n.left); traverse(n.right);
+    };
+    traverse(this.root);
+    return nodes;
+  }
+}
+
+// ─── LAYOUT ──────────────────────────────────────────────────────────────────
+function computePositions(root, cw, ch) {
+  if (!root) return {};
+  const R = 22, VGAP = 90, HGAP = 70;
+  // Assign preliminary x via post-order, then shift subtrees to avoid overlap
+  const nodeData = new Map(); // val → {node, x, y, mod}
+
+  // Step 1: assign y by depth, preliminary x by in-order rank
+  let counter = 0;
+  function firstPass(n, depth) {
+    if (!n) return;
+    firstPass(n.left, depth + 1);
+    nodeData.set(n.val, { node: n, x: counter * HGAP, y: depth * VGAP, mod: 0 });
+    counter++;
+    firstPass(n.right, depth + 1);
+  }
+  firstPass(root, 0);
+
+  // Step 2: center horizontally
+  const xs = [...nodeData.values()].map(d => d.x);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const treeW = maxX - minX;
+  const startX = (cw - treeW) / 2 - minX;
+  const startY = R + 30;
+
+  const pos = {};
+  for (const [val, d] of nodeData) {
+    pos[val] = { x: d.x + startX, y: d.y + startY, r: R, color: d.node.color };
+  }
+  return pos;
+}
+
+// ─── RENDER CANVAS (edges) ───────────────────────────────────────────────────
+function drawEdges(canvas, root, pos) {
+  // Stamp real pixel dimensions onto canvas element
+  const area = canvas.parentElement;
+  const cw = area.clientWidth || area.offsetWidth;
+  const ch = area.clientHeight || area.offsetHeight;
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, cw, ch);
+  if (!root) return;
+  const R = 22;
+  const drawEdge = (n) => {
+    if (!n) return;
+    if (n.left && pos[n.val] && pos[n.left.val]) {
+      const a = pos[n.val], b = pos[n.left.val];
+      ctx.strokeStyle = '#3a3a50'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y + R); ctx.lineTo(b.x, b.y - R); ctx.stroke();
+    }
+    if (n.right && pos[n.val] && pos[n.right.val]) {
+      const a = pos[n.val], b = pos[n.right.val];
+      ctx.strokeStyle = '#3a3a50'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y + R); ctx.lineTo(b.x, b.y - R); ctx.stroke();
+    }
+    drawEdge(n.left); drawEdge(n.right);
+  };
+  drawEdge(root);
+}
+
+// ─── ANIMATED NODES ──────────────────────────────────────────────────────────
+function syncOverlay(overlay, pos, R, highlightVal) {
+  // Update or create DOM nodes
+  const existing = {};
+  overlay.querySelectorAll('.anim-node').forEach(el => { existing[el.dataset.val] = el; });
+  const seen = new Set();
+  for (const [val, p] of Object.entries(pos)) {
+    seen.add(val);
+    let el = existing[val];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'anim-node'; el.dataset.val = val;
+      el.style.width = el.style.height = (R * 2) + 'px';
+      el.style.fontSize = (R * 0.75) + 'px';
+      el.style.opacity = '0';
+      overlay.appendChild(el);
+      // Animate in after next frame
+      requestAnimationFrame(() => { el.style.opacity = '1'; });
+    }
+    el.style.left = (p.x - R) + 'px';
+    el.style.top = (p.y - R) + 'px';
+    el.className = 'anim-node ' + (p.color === 'RED' ? 'red-col' : 'black-col');
+    el.textContent = val;
+    el.style.outline = (String(val) === String(highlightVal)) ? '2px solid #fff' : 'none';
+  }
+  // Remove deleted
+  for (const [val, el] of Object.entries(existing)) {
+    if (!seen.has(val)) { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }
+  }
+}
+
+// ─── INSERTION CONTROLLER ────────────────────────────────────────────────────
+let INS_SEQ = [10, 20, 30, 15, 5, 12, 35, 40, 32, 50];
+let insTree = new RBTree();
+let insIdx = 0; // next to insert
+let insBusy = false;
+
+function parseNumberList(raw) {
+  return raw.split(/[\s,]+/).map(v => parseInt(v, 10)).filter(Number.isFinite);
+}
+
+function buildInsSeqList() {
+  const list = document.getElementById('ins-seq-list');
+  list.innerHTML = '';
+  INS_SEQ.forEach((v, i) => {
+    const div = document.createElement('div');
+    div.className = 'seq-item pending'; div.id = 'ins-seq-' + i;
+    div.innerHTML = `<div class="seq-dot"></div><span>${v}</span>`;
+    list.appendChild(div);
+  });
+}
+
+function resetInsert() {
+  insTree = new RBTree(); insIdx = 0; insBusy = false;
+  buildInsSeqList();
+  document.getElementById('ins-log').textContent = 'Ready.';
+  document.getElementById('ins-next-btn').disabled = false;
+  document.getElementById('ins-prev-btn').disabled = true;
+  const overlay = document.getElementById('ins-overlay');
+  overlay.querySelectorAll('.anim-node').forEach(el => el.remove());
+  drawEdges(document.getElementById('ins-canvas'), null, {});
+}
+
+function rebuildInsertTo(targetIdx) {
+  insTree = new RBTree();
+  for (let i = 0; i < targetIdx; i++) insTree.insert(INS_SEQ[i]);
+  insIdx = targetIdx;
+  buildInsSeqList();
+  for (let i = 0; i < insIdx; i++) {
+    const el = document.getElementById('ins-seq-' + i);
+    if (el) el.className = 'seq-item done';
+  }
+  renderInsTree();
+  document.getElementById('ins-prev-btn').disabled = insIdx === 0;
+  document.getElementById('ins-next-btn').disabled = insIdx >= INS_SEQ.length;
+  insLog(insIdx ? `Back to after inserting ${INS_SEQ[insIdx - 1]}.` : 'Ready.');
+}
+
+function renderInsTree(highlightVal) {
+  const canvas = document.getElementById('ins-canvas');
+  const overlay = document.getElementById('ins-overlay');
+  const cw = canvas.parentElement.clientWidth;
+  const ch = canvas.parentElement.clientHeight;
+  const pos = computePositions(insTree.root, cw, ch);
+  drawEdges(canvas, insTree.root, pos);
+  syncOverlay(overlay, pos, 20, highlightVal);
+}
+
+function insLog(msg) { document.getElementById('ins-log').textContent = msg; }
+
+function insNextStep() {
+  if (insBusy || insIdx >= INS_SEQ.length) return;
+  insBusy = true;
+  document.getElementById('ins-next-btn').disabled = true;
+  const val = INS_SEQ[insIdx];
+  const seqEl = document.getElementById('ins-seq-' + insIdx);
+  if (seqEl) { seqEl.className = 'seq-item current'; }
+  // Mark previous done
+  if (insIdx > 0) { const prev = document.getElementById('ins-seq-' + (insIdx - 1)); if (prev) prev.className = 'seq-item done'; }
+
+  insLog(`Inserting ${val}...`);
+  const steps = insTree.insert(val);
+  insIdx++;
+
+  // Animate steps sequentially
+  let delay = 0;
+  const STEP_DUR = 700;
+
+  steps.forEach((step, si) => {
+    setTimeout(() => {
+      if (step.type === 'insert') {
+        insLog(`BST insert ${step.node} as RED node`);
+      } else if (step.type === 'color') {
+        insLog(`Color ${step.node} → ${step.color}. ${step.reason}`);
+      } else if (step.type === 'recolor') {
+        insLog(step.reason);
+      } else if (step.type === 'rotate') {
+        insLog(step.reason);
+      }
+      renderInsTree(val);
+      // After last step
+      if (si === steps.length - 1) {
+        setTimeout(() => {
+          if (insIdx >= INS_SEQ.length) {
+            insLog('All insertions complete!');
+            document.getElementById('ins-seq-' + (insIdx - 1)).className = 'seq-item done';
+          } else {
+            document.getElementById('ins-seq-' + (insIdx - 1)).className = 'seq-item done';
+            document.getElementById('ins-next-btn').disabled = false;
+          }
+          document.getElementById('ins-prev-btn').disabled = insIdx === 0;
+          insBusy = false;
+        }, STEP_DUR);
+      }
+    }, delay + si * STEP_DUR);
+  });
+
+  if (steps.length === 0) {
+    setTimeout(() => { renderInsTree(val); insBusy = false; document.getElementById('ins-next-btn').disabled = false; }, 400);
+  }
+}
+
+function insPrevStep() {
+  if (insBusy || insIdx === 0) return;
+  rebuildInsertTo(insIdx - 1);
+}
+
+function applyCustomInsert() {
+  const vals = parseNumberList(document.getElementById('ins-custom').value);
+  if (!vals.length) { insLog('Enter values like 10, 20, 30.'); return; }
+  INS_SEQ = [...new Set(vals)];
+  resetInsert();
+}
+
+// ─── DELETION CONTROLLER ─────────────────────────────────────────────────────
+let DEL_SEQ = [15, 5, 10, 12];
+const DEL_LABELS = {
+  15: '15 (Case 2: black node with red child)',
+  5: '5 (Case 1: red node)',
+  10: '10 (Cases 3a, 3c, 3d)',
+  12: '12 (Case 3b)'
+};
+const DEL_INS_SEQ = [10, 20, 30, 15, 5, 12, 35, 40, 32, 50, 1, 7, 6, 8, 45, 60, 55, 70, 65];
+let delTree = new RBTree();
+let delIdx = 0; let delBusy = false; let delReady = false;
+
+function buildDelTree() {
+  delTree = new RBTree();
+  DEL_INS_SEQ.forEach(v => delTree.insert(v));
+  delReady = true;
+}
+
+function buildDelSeqList() {
+  const list = document.getElementById('del-seq-list');
+  list.innerHTML = '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-family:JetBrains Mono">Pre-built tree. Deleting:</div>';
+  DEL_SEQ.forEach((v, i) => {
+    const div = document.createElement('div');
+    div.className = 'seq-item pending'; div.id = 'del-seq-' + i;
+    div.innerHTML = `<div class="seq-dot"></div><span>${DEL_LABELS[v] || v}</span>`;
+    list.appendChild(div);
+  });
+}
+
+function resetDelete() {
+  buildDelTree(); delIdx = 0; delBusy = false;
+  buildDelSeqList();
+  document.getElementById('del-log').textContent = 'Tree built. Ready to delete.';
+  document.getElementById('del-next-btn').disabled = false;
+  document.getElementById('del-prev-btn').disabled = true;
+  renderDelTree();
+}
+
+function rebuildDeleteTo(targetIdx) {
+  buildDelTree();
+  for (let i = 0; i < targetIdx; i++) delTree.delete(DEL_SEQ[i]);
+  delIdx = targetIdx;
+  buildDelSeqList();
+  for (let i = 0; i < delIdx; i++) {
+    const el = document.getElementById('del-seq-' + i);
+    if (el) el.className = 'seq-item done';
+  }
+  renderDelTree();
+  document.getElementById('del-prev-btn').disabled = delIdx === 0;
+  document.getElementById('del-next-btn').disabled = delIdx >= DEL_SEQ.length;
+  delLog(delIdx ? `Back to after deleting ${DEL_SEQ[delIdx - 1]}.` : 'Tree built. Ready to delete.');
+}
+
+function renderDelTree(highlightVal) {
+  const canvas = document.getElementById('del-canvas');
+  const overlay = document.getElementById('del-overlay');
+  const cw = canvas.parentElement.clientWidth;
+  const ch = canvas.parentElement.clientHeight;
+  const pos = computePositions(delTree.root, cw, ch);
+  drawEdges(canvas, delTree.root, pos);
+  syncOverlay(overlay, pos, 20, highlightVal);
+}
+
+function delLog(msg) { document.getElementById('del-log').textContent = msg; }
+
+function delNextStep() {
+  if (delBusy || delIdx >= DEL_SEQ.length) return;
+  delBusy = true;
+  document.getElementById('del-next-btn').disabled = true;
+  const val = DEL_SEQ[delIdx];
+  const seqEl = document.getElementById('del-seq-' + delIdx);
+  if (seqEl) seqEl.className = 'seq-item current';
+  if (delIdx > 0) { const prev = document.getElementById('del-seq-' + (delIdx - 1)); if (prev) prev.className = 'seq-item done'; }
+
+  delLog(`Deleting ${val}...`);
+  const steps = delTree.delete(val);
+  delIdx++;
+
+  const STEP_DUR = 700;
+  steps.forEach((step, si) => {
+    setTimeout(() => {
+      if (step.type === 'delete') delLog(`Remove node ${step.node}`);
+      else if (step.type === 'case') delLog(step.reason);
+      else if (step.type === 'recolor') delLog(step.reason);
+      else if (step.type === 'rotate') delLog(step.reason);
+      renderDelTree(null);
+      if (si === steps.length - 1) {
+        setTimeout(() => {
+          if (delIdx >= DEL_SEQ.length) {
+            delLog('All deletions complete!');
+            document.getElementById('del-seq-' + (delIdx - 1)).className = 'seq-item done';
+          } else {
+            document.getElementById('del-seq-' + (delIdx - 1)).className = 'seq-item done';
+            document.getElementById('del-next-btn').disabled = false;
+          }
+          document.getElementById('del-prev-btn').disabled = delIdx === 0;
+          delBusy = false;
+        }, STEP_DUR);
+      }
+    }, si * STEP_DUR);
+  });
+  if (steps.length === 0) {
+    setTimeout(() => { renderDelTree(); delBusy = false; document.getElementById('del-next-btn').disabled = false; }, 400);
+  }
+}
+
+function delPrevStep() {
+  if (delBusy || delIdx === 0) return;
+  rebuildDeleteTo(delIdx - 1);
+}
+
+function applyCustomDelete() {
+  const vals = parseNumberList(document.getElementById('del-custom').value);
+  if (!vals.length) { delLog('Enter values like 15, 5, 10, 12.'); return; }
+  DEL_SEQ = vals;
+  resetDelete();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+buildInsSeqList();
+buildDelTree();
+buildDelSeqList();
+document.getElementById('ins-prev-btn').disabled = true;
+document.getElementById('del-prev-btn').disabled = true;
+
+// Re-draw on resize
+window.addEventListener('resize', () => {
+  const insActive = document.getElementById('insert-page').classList.contains('active');
+  const delActive = document.getElementById('delete-page').classList.contains('active');
+  if (insActive) renderInsTree();
+  if (delActive) renderDelTree();
+});
+</script>
+</body>
+</html>

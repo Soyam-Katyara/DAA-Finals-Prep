@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algorithm Pseudocodes</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --sidebar: #161b22;
+    --border: #30363d;
+    --editor-bg: #1e2430;
+    --editor-header: #252d3a;
+    --text: #c9d1d9;
+    --muted: #6e7681;
+    --accent: #58a6ff;
+    --keyword: #ff7b72;
+    --func: #d2a8ff;
+    --comment: #8b949e;
+    --num: #79c0ff;
+    --string: #a5d6ff;
+    --active-nav: #1f3148;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .page-shell {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  nav#sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .nav-title {
+    padding: 18px 16px 12px;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+  }
+
+  nav#sidebar a {
+    display: block;
+    padding: 9px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all .15s;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  nav#sidebar a:hover, nav#sidebar a.active {
+    color: var(--accent);
+    background: var(--active-nav);
+    border-left-color: var(--accent);
+  }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px;
+    scroll-behavior: smooth;
+  }
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+    letter-spacing: -.01em;
+  }
+
+  .page-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 36px;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-card {
+    margin-bottom: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .code-header {
+    background: var(--editor-header);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .file-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-left: auto;
+    padding-right: 4px;
+  }
+
+  .code-body {
+    background: var(--editor-bg);
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .line-nums {
+    padding: 16px 12px 16px 0;
+    min-width: 44px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+    user-select: none;
+    border-right: 1px solid var(--border);
+    white-space: pre;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  .code-content {
+    padding: 16px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre;
+    flex: 1;
+  }
+
+  /* syntax colors */
+  .kw  { color: var(--keyword); }
+  .fn  { color: var(--func); }
+  .cm  { color: var(--comment); font-style: italic; }
+  .nm  { color: var(--num); }
+  .op  { color: #79c0ff; }
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Site pages">
+  <a class="site-nav-home" href="index.html">← Home</a>
+  <a href="avl-tree.html">AVL Trees</a>
+  <a href="rbt.html">Red-Black Trees</a>
+  <a href="heap-visualizer.html">Heaps</a>
+  <a href="hash-tables.html">Hash Tables</a>
+  <a href="graph-traversal.html">BFS / DFS</a>
+  <a href="topo-sort.html">Topological Sort</a>
+  <a href="kruskals.html">Kruskal's</a>
+  <a href="dijkstra.html">Dijkstra's</a>
+  <a href="bellman-ford.html">Bellman-Ford</a>
+  <a href="pseudocodes.html" class="active">Pseudocodes</a>
+</nav>
+
+<div class="page-shell">
+
+<nav id="sidebar">
+  <div class="nav-title">📂 Algorithms</div>
+  <a href="#heapsort">Heapsort</a>
+  <a href="#dfs">DFS</a>
+  <a href="#bfs">BFS</a>
+  <a href="#topo-dfs">Topo Sort (DFS)</a>
+  <a href="#topo-bfs">Topo Sort (BFS)</a>
+  <a href="#kruskal">Kruskal's</a>
+  <a href="#dijkstra">Dijkstra's</a>
+  <a href="#bellman">Bellman-Ford</a>
+</nav>
+
+<main id="main">
+  <div class="page-title">Algorithm Pseudocodes</div>
+  <div class="page-sub">Reference sheet — click any algorithm in the sidebar to jump to it.</div>
+
+  <!-- HEAPSORT -->
+  <div class="code-card" id="heapsort">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">heapsort.pseudo</span>
+      <span class="section-title">Heapsort</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-heapsort"></div>
+      <div class="code-content"><span class="fn">HEAPSORT</span>(<span class="nm">array</span> A):
+  <span class="fn">BUILD-MAX-HEAP</span>(A)
+  <span class="kw">for</span> i <span class="kw">from</span> <span class="fn">length</span>(A) <span class="kw">down to</span> <span class="nm">2</span>:
+    swap A[<span class="nm">1</span>] <span class="kw">with</span> A[i]
+    heap_size = heap_size - <span class="nm">1</span>
+    <span class="fn">MAX-HEAPIFY</span>(A, <span class="nm">1</span>)
+
+<span class="fn">BUILD-MAX-HEAP</span>(A):
+  heap_size = <span class="fn">length</span>(A)
+  <span class="kw">for</span> i <span class="kw">from</span> <span class="fn">floor</span>(<span class="fn">length</span>(A) / <span class="nm">2</span>) <span class="kw">down to</span> <span class="nm">1</span>:
+    <span class="fn">MAX-HEAPIFY</span>(A, i)
+
+<span class="fn">MAX-HEAPIFY</span>(A, i):
+  left  = <span class="nm">2</span>i
+  right = <span class="nm">2</span>i + <span class="nm">1</span>
+  largest = i
+  <span class="kw">if</span> left &lt;= heap_size <span class="kw">AND</span> A[left] &gt; A[largest]:
+    largest = left
+  <span class="kw">if</span> right &lt;= heap_size <span class="kw">AND</span> A[right] &gt; A[largest]:
+    largest = right
+  <span class="kw">if</span> largest ≠ i:
+    swap A[i] <span class="kw">with</span> A[largest]
+    <span class="fn">MAX-HEAPIFY</span>(A, largest)</div>
+    </div>
+  </div>
+
+  <!-- DFS -->
+  <div class="code-card" id="dfs">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">dfs.pseudo</span>
+      <span class="section-title">Depth-First Search</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-dfs"></div>
+      <div class="code-content"><span class="fn">DFS</span>(graph G, start vertex s):
+  mark s <span class="kw">as</span> VISITED
+  <span class="fn">process</span>(s)
+  <span class="kw">for each</span> neighbor v <span class="kw">of</span> s:
+    <span class="kw">if</span> v <span class="kw">is NOT</span> VISITED:
+      <span class="fn">DFS</span>(G, v)
+
+  <span class="cm">// Iterative variant:</span>
+  push s <span class="kw">onto</span> Stack
+  <span class="kw">while</span> Stack <span class="kw">is not</span> empty:
+    v = Stack.<span class="fn">pop</span>()
+    <span class="kw">if</span> v <span class="kw">is NOT</span> VISITED:
+      mark v <span class="kw">as</span> VISITED
+      <span class="fn">process</span>(v)
+      <span class="kw">for each</span> neighbor u <span class="kw">of</span> v:
+        <span class="kw">if</span> u <span class="kw">is NOT</span> VISITED:
+          Stack.<span class="fn">push</span>(u)</div>
+    </div>
+  </div>
+
+  <!-- BFS -->
+  <div class="code-card" id="bfs">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">bfs.pseudo</span>
+      <span class="section-title">Breadth-First Search</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-bfs"></div>
+      <div class="code-content"><span class="fn">BFS</span>(graph G, start vertex s):
+  mark s <span class="kw">as</span> VISITED
+  enqueue s <span class="kw">into</span> Queue
+  <span class="kw">while</span> Queue <span class="kw">is not</span> empty:
+    v = Queue.<span class="fn">dequeue</span>()
+    <span class="fn">process</span>(v)
+    <span class="kw">for each</span> neighbor u <span class="kw">of</span> v:
+      <span class="kw">if</span> u <span class="kw">is NOT</span> VISITED:
+        mark u <span class="kw">as</span> VISITED
+        enqueue u <span class="kw">into</span> Queue</div>
+    </div>
+  </div>
+
+  <!-- TOPO DFS -->
+  <div class="code-card" id="topo-dfs">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">topo-dfs.pseudo</span>
+      <span class="section-title">Topological Sort (DFS)</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-topo-dfs"></div>
+      <div class="code-content"><span class="fn">TOPOLOGICAL-SORT-DFS</span>(graph G):
+  <span class="kw">for each</span> vertex v <span class="kw">in</span> G:
+    mark v <span class="kw">as</span> UNVISITED
+  result = empty Stack
+  <span class="kw">for each</span> vertex v <span class="kw">in</span> G:
+    <span class="kw">if</span> v <span class="kw">is</span> UNVISITED:
+      <span class="fn">DFS-VISIT</span>(G, v, result)
+  <span class="kw">return</span> result <span class="cm">(top → bottom is topological order)</span>
+
+<span class="fn">DFS-VISIT</span>(G, v, result):
+  mark v <span class="kw">as</span> IN-PROGRESS              <span class="cm">// detect cycles (gray)</span>
+  <span class="kw">for each</span> neighbor u <span class="kw">of</span> v:
+    <span class="kw">if</span> u <span class="kw">is</span> IN-PROGRESS:
+      report cycle <span class="cm">(not a DAG)</span>
+    <span class="kw">if</span> u <span class="kw">is</span> UNVISITED:
+      <span class="fn">DFS-VISIT</span>(G, u, result)
+  mark v <span class="kw">as</span> DONE                     <span class="cm">// fully processed (black)</span>
+  result.<span class="fn">push</span>(v)</div>
+    </div>
+  </div>
+
+  <!-- TOPO BFS (Kahn's) -->
+  <div class="code-card" id="topo-bfs">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">topo-bfs.pseudo</span>
+      <span class="section-title">Topological Sort — Kahn's</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-topo-bfs"></div>
+      <div class="code-content"><span class="fn">TOPOLOGICAL-SORT-BFS</span>(graph G):
+  compute in-degree <span class="kw">for every</span> vertex
+  enqueue <span class="kw">all</span> vertices <span class="kw">with</span> in-degree = <span class="nm">0</span> <span class="kw">into</span> Queue
+  result = []
+  <span class="kw">while</span> Queue <span class="kw">is not</span> empty:
+    v = Queue.<span class="fn">dequeue</span>()
+    result.<span class="fn">append</span>(v)
+    <span class="kw">for each</span> neighbor u <span class="kw">of</span> v:
+      in-degree[u] = in-degree[u] - <span class="nm">1</span>
+      <span class="kw">if</span> in-degree[u] = <span class="nm">0</span>:
+        enqueue u <span class="kw">into</span> Queue
+  <span class="kw">if</span> <span class="fn">length</span>(result) ≠ number of vertices:
+    report cycle <span class="cm">(not a DAG)</span>
+  <span class="kw">return</span> result</div>
+    </div>
+  </div>
+
+  <!-- KRUSKAL -->
+  <div class="code-card" id="kruskal">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">kruskal.pseudo</span>
+      <span class="section-title">Kruskal's Algorithm</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-kruskal"></div>
+      <div class="code-content"><span class="fn">KRUSKAL</span>(graph G with weighted edges):
+  sort <span class="kw">all</span> edges by weight (ascending)
+  initialize a Disjoint-Set (Union-Find) <span class="kw">with</span> each vertex <span class="kw">in</span> its own set
+  MST = []
+  <span class="kw">for each</span> edge (u, v, weight) <span class="kw">in</span> sorted order:
+    <span class="kw">if</span> <span class="fn">FIND</span>(u) ≠ <span class="fn">FIND</span>(v):           <span class="cm">// u and v in different components</span>
+      MST.<span class="fn">append</span>((u, v, weight))
+      <span class="fn">UNION</span>(u, v)
+    <span class="kw">if</span> <span class="fn">length</span>(MST) = |V| - <span class="nm">1</span>:
+      <span class="kw">break</span>                          <span class="cm">// MST is complete</span>
+  <span class="kw">return</span> MST</div>
+    </div>
+  </div>
+
+  <!-- DIJKSTRA -->
+  <div class="code-card" id="dijkstra">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">dijkstra.pseudo</span>
+      <span class="section-title">Dijkstra's Algorithm</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-dijkstra"></div>
+      <div class="code-content"><span class="fn">DIJKSTRA</span>(graph G, source s):
+  dist[s] = <span class="nm">0</span>
+  dist[v] = ∞  <span class="kw">for all other</span> vertices v
+  prev[v] = UNDEFINED  <span class="kw">for all</span> v
+  enqueue <span class="kw">all</span> vertices <span class="kw">into</span> MinPriorityQueue keyed by dist
+  <span class="kw">while</span> PriorityQueue <span class="kw">is not</span> empty:
+    u = vertex <span class="kw">with</span> minimum dist (extract-min)
+    <span class="kw">for each</span> neighbor v <span class="kw">of</span> u:
+      alt = dist[u] + <span class="fn">weight</span>(u, v)
+      <span class="kw">if</span> alt &lt; dist[v]:
+        dist[v] = alt
+        prev[v] = u
+        decrease-key <span class="kw">of</span> v <span class="kw">in</span> PriorityQueue
+  <span class="kw">return</span> dist[], prev[]</div>
+    </div>
+  </div>
+
+  <!-- BELLMAN-FORD -->
+  <div class="code-card" id="bellman">
+    <div class="code-header">
+      <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <span class="file-name">bellman-ford.pseudo</span>
+      <span class="section-title">Bellman-Ford Algorithm</span>
+    </div>
+    <div class="code-body">
+      <div class="line-nums" id="ln-bellman"></div>
+      <div class="code-content"><span class="fn">BELLMAN-FORD</span>(graph G, source s):
+  dist[s] = <span class="nm">0</span>
+  dist[v] = ∞  <span class="kw">for all other</span> vertices v
+  prev[v] = UNDEFINED  <span class="kw">for all</span> v
+  <span class="cm">// Relax all edges |V| - 1 times</span>
+  repeat |V| - <span class="nm">1</span> times:
+    <span class="kw">for each</span> edge (u, v, weight) <span class="kw">in</span> G:
+      <span class="kw">if</span> dist[u] + weight &lt; dist[v]:
+        dist[v] = dist[u] + weight
+        prev[v] = u
+  <span class="cm">// Detect negative-weight cycles</span>
+  <span class="kw">for each</span> edge (u, v, weight) <span class="kw">in</span> G:
+    <span class="kw">if</span> dist[u] + weight &lt; dist[v]:
+      report <span class="cm">"negative-weight cycle detected"</span>
+  <span class="kw">return</span> dist[], prev[]</div>
+    </div>
+  </div>
+
+</main>
+
+</div>
+
+<script>
+  // Auto-generate line numbers for each block
+  document.querySelectorAll('.code-content').forEach(el => {
+    const lines = el.innerHTML.split('\n').length;
+    const id = el.closest('.code-card').id;
+    const lnEl = document.getElementById('ln-' + id);
+    if (lnEl) {
+      lnEl.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('\n');
+    }
+  });
+
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('.code-card');
+  const links = document.querySelectorAll('nav#sidebar a');
+  const main = document.getElementById('main');
+
+  main.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (s.offsetTop - 80 <= main.scrollTop) current = s.id;
+    });
+    links.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  });
+
+  // Smooth scroll nav clicks
+  links.forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) main.scrollTo({ top: target.offsetTop - 20, behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
